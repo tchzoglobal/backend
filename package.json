@@ -20,16 +20,24 @@
   "dependencies": {
     "@payloadcms/db-mongodb": "3.64.0",
     "@payloadcms/next": "3.64.0",
+    "@payloadcms/payload-cloud": "^3.64.0",
     "@payloadcms/richtext-lexical": "3.64.0",
     "@payloadcms/ui": "3.64.0",
+    "axios": "^1.13.2",
+    "cloudinary": "^2.8.0",
+    "cors": "^2.8.5",
     "cross-env": "^7.0.3",
     "dotenv": "16.4.7",
+    "express": "^5.1.0",
     "graphql": "^16.8.1",
     "next": "15.4.7",
     "payload": "3.64.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "sharp": "0.34.2"
+    "sharp": "0.34.2",
+    "slugify": "^1.6.6",
+    "streamifier": "^0.1.1",
+    "ts-node": "^10.9.2"
   },
   "devDependencies": {
     "@playwright/test": "1.56.1",
