@@ -1,4 +1,4 @@
-import { CollectionConfig } from "payload/types";
+import type { CollectionConfig, Where } from "payload";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 
 /* -----------------------------------------------------------
@@ -23,27 +23,20 @@ const convertNodesToMindmap = (rootChildren: any[]) => {
 
   const extractListItemText = (children: any[]) => {
     let text = "";
-
     for (const child of children) {
       if (child.type === "text") text += child.text + " ";
-
       if (child.type === "paragraph" && Array.isArray(child.children)) {
         text += extractListItemText(child.children);
       }
-
-      // Ignore nested lists
       if (child.type === "list") continue;
     }
-
     return text.trim();
   };
 
   const processListItem = (node: any) => {
     if (node.type !== "listitem") return;
-
     const level = (node.indent || 0) + 1;
     const text = extractListItemText(node.children);
-
     if (!text) return;
 
     const newNode = { text, children: [] };
@@ -69,7 +62,6 @@ const convertNodesToMindmap = (rootChildren: any[]) => {
     } else {
       stack[stack.length - 1].item.children.push(newNode);
     }
-
     stack.push({ level, item: newNode });
   };
 
@@ -91,24 +83,12 @@ const convertNodesToMindmap = (rootChildren: any[]) => {
 const Resources: CollectionConfig = {
   slug: "resources",
   indexes: [
-    {
-      fields: ['lesson'],
-    },
-    {
-      fields: ['subject'],
-    },
-    {
-      fields: ['board', 'grade', 'medium'],
-    },
-    {
-      fields: ['subject', 'lesson'],
-    },
-    {
-      fields: ['lesson', 'board', 'grade', 'medium'],
-    },
-    {
-      fields: ['createdAt'],
-    },
+    { fields: ['lesson'] },
+    { fields: ['subject'] },
+    { fields: ['board', 'grade', 'medium'] },
+    { fields: ['subject', 'lesson'] },
+    { fields: ['lesson', 'board', 'grade', 'medium'] },
+    { fields: ['createdAt'] },
   ],
   access: {
     read: () => true,
@@ -116,10 +96,8 @@ const Resources: CollectionConfig = {
   admin: {
     useAsTitle: "title",
   },
-
   fields: [
     { name: "title", type: "text", required: true },
-
     { name: "board", type: "relationship", relationTo: "boards", required: true },
     { name: "medium", type: "relationship", relationTo: "mediums", required: true },
     { name: "grade", type: "relationship", relationTo: "grades", required: true },
@@ -129,13 +107,19 @@ const Resources: CollectionConfig = {
       type: "relationship",
       relationTo: "subjects",
       required: true,
-      filterOptions: ({ data }) => {
-        const { board, medium, grade } = data || {};
+      // ✅ Explicitly typed as Where to fix index signature error
+      filterOptions: ({ data }): Where => {
+        const board = data?.board;
+        const medium = data?.medium;
+        const grade = data?.grade;
+
         if (board && medium && grade) {
           return {
-            board: { equals: board },
-            medium: { equals: medium },
-            grade: { equals: grade },
+            and: [
+              { board: { equals: board } },
+              { medium: { equals: medium } },
+              { grade: { equals: grade } },
+            ],
           };
         }
         return { id: { exists: false } };
@@ -147,7 +131,7 @@ const Resources: CollectionConfig = {
       type: "relationship",
       relationTo: "lessons",
       required: true,
-      filterOptions: ({ data }) => {
+      filterOptions: ({ data }): Where => {
         if (data?.subject) {
           return { subject: { equals: data.subject } };
         }
@@ -157,7 +141,6 @@ const Resources: CollectionConfig = {
 
     { name: "video", type: "text", label: "Video (YouTube URL)" },
     { name: "audio", type: "text", label: "Audio (YouTube URL)" },
-
     { name: "faq", type: "richText", editor: lexicalEditor() },
     { name: "briefingDoc", type: "richText", editor: lexicalEditor() },
     { name: "studyGuide", type: "richText", editor: lexicalEditor() },
@@ -181,14 +164,11 @@ const Resources: CollectionConfig = {
 
         if (mindmapRoot?.children) {
           try {
-            data.mindmapJSON = convertNodesToMindmap(
-              mindmapRoot.children
-            );
+            data.mindmapJSON = convertNodesToMindmap(mindmapRoot.children);
           } catch (err) {
             console.error("❌ Mindmap conversion error:", err);
           }
         }
-
         return data;
       },
     ],
@@ -196,17 +176,9 @@ const Resources: CollectionConfig = {
     afterChange: [
       async ({ doc, req }) => {
         try {
-          const lessonId =
-            typeof doc.lesson === "string"
-              ? doc.lesson
-              : doc.lesson?.id;
+          const lessonId = typeof doc.lesson === "object" ? doc.lesson?.id : doc.lesson;
+          const subjectId = typeof doc.subject === "object" ? doc.subject?.id : doc.subject;
 
-          const subjectId =
-            typeof doc.subject === "string"
-              ? doc.subject
-              : doc.subject?.id;
-
-          // 🔹 Revalidate resources page
           if (lessonId) {
             await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
               method: "POST",
@@ -219,19 +191,19 @@ const Resources: CollectionConfig = {
             });
           }
 
-          // 🔹 Revalidate lessons page (resource completeness changed)
           if (subjectId) {
-            const subject = await req.payload.findByID({
+            // ✅ Cast as any to fix the "slug does not exist on type Subject" error
+            const subject = (await req.payload.findByID({
               collection: "subjects",
               id: subjectId,
-            });
+            })) as any;
 
             await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 type: "lessons",
-                subject: subject?.slug || subject?.name,
+                subject: subject?.slug || subject?.name || 'unknown',
                 secret: process.env.REVALIDATE_TOKEN,
               }),
             });
@@ -243,7 +215,7 @@ const Resources: CollectionConfig = {
     ],
 
     afterDelete: [
-      async ({ doc }) => {
+      async () => {
         try {
           await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
             method: "POST",

@@ -1,30 +1,20 @@
-import { CollectionConfig } from 'payload/types'
+import type { CollectionConfig, Where } from 'payload'
 
 const Lessons: CollectionConfig = {
   slug: 'lessons',
   indexes: [
-    {
-      fields: ['subject'],
-    },
-    {
-      fields: ['board', 'grade', 'medium'],
-    },
-    {
-      fields: ['subject', 'board', 'grade', 'medium'],
-    },
-    {
-      fields: ['createdAt'],
-    },
+    { fields: ['subject'] },
+    { fields: ['board', 'grade', 'medium'] },
+    { fields: ['subject', 'board', 'grade', 'medium'] },
+    { fields: ['createdAt'] },
   ],
   access: {
     read: () => true,
   },
-
   labels: {
     singular: 'Lesson',
     plural: 'Lessons',
   },
-
   admin: {
     useAsTitle: 'title',
   },
@@ -57,22 +47,28 @@ const Lessons: CollectionConfig = {
       type: 'relationship',
       relationTo: 'subjects',
       required: true,
-
-      // 🔹 Keep your dynamic subject filtering
-      filterOptions: ({ data }) => {
+      // ✅ Explicitly typing the return as Where solves the "index signature" error
+      filterOptions: ({ data }): Where => {
         const board = data?.board
         const medium = data?.medium
         const grade = data?.grade
 
         if (board && medium && grade) {
           return {
-            board: { equals: board },
-            medium: { equals: medium },
-            grade: { equals: grade },
+            and: [
+              { board: { equals: board } },
+              { medium: { equals: medium } },
+              { grade: { equals: grade } },
+            ],
           }
         }
 
-        return { id: { not_equals: 'null' } }
+        // Return a valid 'Where' query that matches nothing if parent fields are empty
+        return {
+          id: {
+            exists: false,
+          },
+        }
       },
     },
     {
@@ -80,36 +76,32 @@ const Lessons: CollectionConfig = {
       type: 'textarea',
     },
   ],
-
   hooks: {
     afterChange: [
       async ({ doc, req }) => {
         try {
-          const subjectId =
-            typeof doc.subject === 'string'
-              ? doc.subject
-              : doc.subject?.id
+          // In 3.0, relationship fields can be objects or strings (IDs)
+          const subjectId = typeof doc.subject === 'object' ? doc.subject?.id : doc.subject
 
-          // 🔹 Fetch subject to get slug or name
           if (subjectId) {
-            const subject = await req.payload.findByID({
-              collection: 'subjects',
-              id: subjectId,
-            })
+            const subject = (await req.payload.findByID({
+            collection: 'subjects',
+            id: subjectId,
+          })) as any
 
-            // 🔹 Revalidate lessons page for that subject
+            // Revalidate lessons page
             await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 type: 'lessons',
-                subject: subject?.slug || subject?.name,
+                subject: subject?.slug || subject?.name || 'unknown',
                 secret: process.env.REVALIDATE_TOKEN,
               }),
             })
           }
 
-          // 🔹 Revalidate resources page for this lesson
+          // Revalidate resources page
           await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -124,9 +116,8 @@ const Lessons: CollectionConfig = {
         }
       },
     ],
-
     afterDelete: [
-      async ({ doc }) => {
+      async () => {
         try {
           await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
             method: 'POST',
