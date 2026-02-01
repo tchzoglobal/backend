@@ -1,4 +1,5 @@
-import { cloudinaryStorage } from 'payload-storage-cloudinary' 
+import { cloudStoragePlugin } from '@payloadcms/plugin-cloud-storage'
+import { cloudinaryAdapter } from './cloudinaryAdapter' // Import your new file
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
@@ -18,12 +19,12 @@ import Resources from './collections/Resources'
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
-// Helper to check for Cloudinary credentials
-const cloudinaryEnabled = Boolean(
+const isCloudinaryConfigured = Boolean(
   process.env.CLOUDINARY_CLOUD_NAME &&
   process.env.CLOUDINARY_API_KEY &&
   process.env.CLOUDINARY_API_SECRET
-)
+);
+
 
 export default buildConfig({
   admin: {
@@ -64,17 +65,14 @@ export default buildConfig({
   sharp,
   
   plugins: [
-    cloudinaryEnabled 
-      ? cloudinaryStorage({
-          // ✅ FIX: No more "config: { ... }" wrapper!
-          // Pass these directly in the object.
-          cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
-          api_key: process.env.CLOUDINARY_API_KEY!,
-          api_secret: process.env.CLOUDINARY_API_SECRET!,
+    isCloudinaryConfigured 
+      ? cloudStoragePlugin({
           collections: {
-            [Media.slug]: true,
+            media: {
+              adapter: cloudinaryAdapter(),
+            },
           },
         })
-      : (config) => config, // Skip plugin during Cloud Build  
+      : (config) => config,
   ],
 })
