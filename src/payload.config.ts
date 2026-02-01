@@ -58,14 +58,19 @@ export default buildConfig({
   
   plugins: [
     cloudinaryStorage({
-      // ✅ Your error confirmed 'config' is the expected key here
+      // ✅ Only enable the plugin if the keys exist
+      enabled: !!(
+        process.env.CLOUDINARY_CLOUD_NAME &&
+        process.env.CLOUDINARY_API_KEY &&
+        process.env.CLOUDINARY_API_SECRET
+      ),
       config: {
-        cloud_name: process.env.CLOUDINARY_CLOUD_NAME || '',
-        api_key: process.env.CLOUDINARY_API_KEY || '',
-        api_secret: process.env.CLOUDINARY_API_SECRET || '',
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'tmp',
+        api_key: process.env.CLOUDINARY_API_KEY || 'tmp',
+        api_secret: process.env.CLOUDINARY_API_SECRET || 'tmp',
       },
       collections: {
-        [Media.slug]: true, 
+        [Media.slug]: true,
       },
     }),
   ],
