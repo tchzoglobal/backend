@@ -18,6 +18,13 @@ import Resources from './collections/Resources'
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
+// Helper to check for Cloudinary credentials
+const cloudinaryEnabled = Boolean(
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET
+)
+
 export default buildConfig({
   admin: {
     user: Users.slug,
@@ -57,21 +64,17 @@ export default buildConfig({
   sharp,
   
   plugins: [
-    cloudinaryStorage({
-      // ✅ Only enable the plugin if the keys exist
-      enabled: !!(
-        process.env.CLOUDINARY_CLOUD_NAME &&
-        process.env.CLOUDINARY_API_KEY &&
-        process.env.CLOUDINARY_API_SECRET
-      ),
-      config: {
-        cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'tmp',
-        api_key: process.env.CLOUDINARY_API_KEY || 'tmp',
-        api_secret: process.env.CLOUDINARY_API_SECRET || 'tmp',
-      },
-      collections: {
-        [Media.slug]: true,
-      },
-    }),
+    cloudinaryEnabled 
+      ? cloudinaryStorage({
+          // ✅ FIX: No more "config: { ... }" wrapper!
+          // Pass these directly in the object.
+          cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
+          api_key: process.env.CLOUDINARY_API_KEY!,
+          api_secret: process.env.CLOUDINARY_API_SECRET!,
+          collections: {
+            [Media.slug]: true,
+          },
+        })
+      : (config) => config, // Skip plugin during Cloud Build  
   ],
 })
