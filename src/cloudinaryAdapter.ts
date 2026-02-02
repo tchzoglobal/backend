@@ -17,7 +17,7 @@ export const cloudinaryAdapter = (): Adapter => {
           const uploadStream = cloudinary.uploader.upload_stream(
             {
               resource_type: 'auto',
-              folder: 'media', // You can change the folder name here
+              folder: 'payload-subjects', // You can change the folder name here
             },
             (error, result) => {
               if (error) return reject(error)

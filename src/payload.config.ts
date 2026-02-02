@@ -70,7 +70,7 @@ export default buildConfig({
           collections: {
             media: {
               adapter: cloudinaryAdapter(),
-              prefix: 'payload-subjects',
+              
             },
           },
         })
