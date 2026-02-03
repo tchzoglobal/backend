@@ -2,7 +2,6 @@ import { CollectionConfig } from 'payload'
 
 const Subjects: CollectionConfig = {
   slug: 'subjects',
-  // ✅ Preserved custom indexes for performance
   indexes: [
     { fields: ['board', 'medium', 'grade'] },
     { fields: ['name'] },
@@ -27,7 +26,6 @@ const Subjects: CollectionConfig = {
       relationTo: 'media',
       required: true,
     },
-    // ✅ Metadata fields synchronized from the Media collection
     {
       name: 'cloudinaryURL',
       type: 'text',
@@ -39,58 +37,36 @@ const Subjects: CollectionConfig = {
       admin: { readOnly: true },
     },
   ],
-
   hooks: {
-    afterChange: [
-      async ({ doc, req }) => {
-        // Only proceed if an image is attached
-        if (!doc.image) return;
-
-        try {
-          // 1. Resolve the ID of the attached media
-          const mediaId = typeof doc.image === 'object' ? doc.image.id : doc.image;
-
-          // 2. Fetch the "Source of Truth" from the Media collection
-          const mediaDoc = await req.payload.findByID({
-            collection: 'media',
-            id: mediaId,
-          });
-
-          // 3. Update the Subject record only if the data is missing or mismatched
-          // This prevents infinite loops while ensuring data is always fresh
-          if (mediaDoc && mediaDoc.url !== doc.cloudinaryURL) {
-            await req.payload.update({
-              collection: 'subjects',
-              id: doc.id,
-              data: {
-                cloudinaryURL: mediaDoc.url,
-                // We use the filename or the custom public_id field if present
-                cloudinaryPublicId: (mediaDoc as any).public_id || mediaDoc.filename,
-              },
+    // 🔥 Use beforeChange to inject data directly into the save operation
+    beforeChange: [
+      async ({ data, req }) => {
+        if (data.image) {
+          try {
+            // 1. Fetch the media document being linked
+            const mediaDoc = await req.payload.findByID({
+              collection: 'media',
+              id: data.image,
+              depth: 0, // Keep it light
             });
-          }
 
-          // 🔹 Next.js ISR Revalidation
-          // This clears the cache on your Vercel frontend automatically
-          if (process.env.NEXT_PUBLIC_SITE_URL) {
-            await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                slug: doc.slug, 
-                type: 'subject', 
-                secret: process.env.REVALIDATE_TOKEN 
-              }),
-            });
+            if (mediaDoc) {
+              // 2. Map the media data directly to the incoming subject data
+              data.cloudinaryURL = mediaDoc.url || '';
+              data.cloudinaryPublicId = (mediaDoc as any).public_id || mediaDoc.filename || '';
+              
+              console.log('✅ Success: Injecting Cloudinary data into Subject save');
+            }
+          } catch (err) {
+            console.error('❌ Hook Error:', err);
           }
-        } catch (err) {
-          console.error('❌ Subject Hook Sync/ISR failed:', err);
         }
+        return data; // Return the modified data to be saved
       },
     ],
-    afterDelete: [
+    // Keep afterChange strictly for Next.js Revalidation (Side effects)
+    afterChange: [
       async ({ doc }) => {
-        // Ensure the deleted content is also removed from the Next.js cache
         if (process.env.NEXT_PUBLIC_SITE_URL) {
           try {
             await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
@@ -103,7 +79,7 @@ const Subjects: CollectionConfig = {
               }),
             });
           } catch (err) {
-            console.error('❌ ISR Delete Revalidation failed:', err);
+            console.error('❌ ISR Revalidation failed:', err);
           }
         }
       },
