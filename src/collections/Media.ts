@@ -28,20 +28,7 @@ export const Media: CollectionConfig = {
           format: 'webp',
         },
       },
-      {
-        name: 'card',
-        width: 600,
-        formatOptions: {
-          format: 'webp',
-        },
-      },
-      {
-        name: 'hero',
-        width: 1200,
-        formatOptions: {
-          format: 'webp',
-        },
-      },
+     
     ],
 
     /**

@@ -3,7 +3,7 @@ import { v2 as cloudinary, UploadApiResponse } from 'cloudinary'
 import { Adapter } from '@payloadcms/plugin-cloud-storage/types'
 
 export const cloudinaryAdapter = (): Adapter => {
-  return () => {
+  return ({ collection }) => {
     cloudinary.config({
       cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
       api_key: process.env.CLOUDINARY_API_KEY,
@@ -13,44 +13,57 @@ export const cloudinaryAdapter = (): Adapter => {
     return {
       name: 'cloudinary',
 
-      handleUpload: async ({ file, prefix, doc }) => {
-        // 🔑 deterministic ID
-        const publicId = doc?.id
-
-        const result = await new Promise<UploadApiResponse>((resolve, reject) => {
-          const stream = cloudinary.uploader.upload_stream(
+      handleUpload: async ({ file, prefix }) => {
+        const uploadResult = await new Promise<UploadApiResponse>((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
             {
               resource_type: 'image',
-              folder: prefix || 'subjects',
-              public_id: publicId,
-              overwrite: true,
-              invalidate: true,
+              folder: prefix || collection.slug,
+              use_filename: false,
+              unique_filename: true,
             },
-            (err, res) => {
-              if (err) reject(err)
-              else resolve(res!)
+            (error, result) => {
+              if (error) return reject(error)
+              resolve(result!)
             }
           )
 
-          stream.end(file.buffer)
+          uploadStream.end(file.buffer)
         })
 
-        // Payload needs filename only
-        file.filename = publicId
+        // Store ONLY the public_id without folder
+        const publicId = uploadResult.public_id
+        file.filename = publicId.includes('/')
+          ? publicId.split('/').pop()!
+          : publicId
+
         return file
       },
 
-      generateURL: ({ filename, prefix }) => {
-        const fullPath = prefix ? `${prefix}/${filename}` : filename
-        return cloudinary.url(fullPath, {
+      /**
+       * ✅ THIS IS THE IMPORTANT PART
+       * Payload calls this with `size` for thumbnails
+       */
+      generateURL: ({ filename, prefix, size }) => {
+        const publicId = prefix ? `${prefix}/${filename}` : filename
+
+        const transformation: any = {
           secure: true,
-          version: Date.now(), // cache-buster
-        })
+        }
+
+        if (size) {
+          transformation.width = size.width
+          transformation.height = size.height
+          transformation.crop = size.crop || 'fill'
+          transformation.format = size.formatOptions?.format || undefined
+        }
+
+        return cloudinary.url(publicId, transformation)
       },
 
       handleDelete: async ({ filename, prefix }) => {
-        const fullPath = prefix ? `${prefix}/${filename}` : filename
-        await cloudinary.uploader.destroy(fullPath)
+        const publicId = prefix ? `${prefix}/${filename}` : filename
+        await cloudinary.uploader.destroy(publicId)
       },
 
       staticHandler: () => {},

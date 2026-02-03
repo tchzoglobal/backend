@@ -20,17 +20,7 @@ const Subjects: CollectionConfig = {
 
   admin: {
     useAsTitle: 'name',
-
-    /**
-     * ✅ The image column will now show a thumbnail
-     */
-    defaultColumns: [
-      'image',
-      'name',
-      'board',
-      'medium',
-      'grade',
-    ],
+    defaultColumns: ['name', 'image', 'board', 'medium', 'grade'], // put 'name' first
   },
 
   fields: [
