@@ -1,8 +1,7 @@
-import { CollectionConfig } from 'payload'
+import { CollectionConfig } from 'payload';
 
 const Subjects: CollectionConfig = {
   slug: 'subjects',
-  // ✅ Restored all your custom indexes
   indexes: [
     { fields: ['board', 'medium', 'grade'] },
     { fields: ['name'] },
@@ -27,7 +26,6 @@ const Subjects: CollectionConfig = {
       relationTo: 'media',
       required: true,
     },
-    // ✅ Restored your specific metadata fields
     {
       name: 'cloudinaryURL',
       type: 'text',
@@ -46,25 +44,30 @@ const Subjects: CollectionConfig = {
         if (!doc.image) return;
 
         try {
-          // In Payload 3.0, the 'media' doc already has the Cloudinary info 
-          // because of the Storage Plugin. We just link it here.
+          // Get the ID of the media document
+          const mediaId = typeof doc.image === 'object' ? doc.image.id : doc.image;
+
+          // Fetch the full Media document
           const mediaDoc = await req.payload.findByID({
             collection: 'media',
-            id: typeof doc.image === 'object' ? doc.image.id : doc.image,
+            id: mediaId,
           });
 
+          // Check if we need to sync the URL and PublicID to this Subject
+          // We use the raw mediaDoc.url which is generated correctly by the adapter
           if (mediaDoc && mediaDoc.url !== doc.cloudinaryURL) {
             await req.payload.update({
               collection: 'subjects',
               id: doc.id,
               data: {
                 cloudinaryURL: mediaDoc.url,
-                cloudinaryPublicId: (mediaDoc as any).public_id || '', 
+                // Using filename as fallback if public_id isn't explicitly on the doc
+                cloudinaryPublicId: (mediaDoc as any).public_id || mediaDoc.filename, 
               },
             });
           }
 
-          // 🔹 ISR Revalidation
+          // ISR Revalidation
           if (process.env.NEXT_PUBLIC_SITE_URL) {
             await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
               method: 'POST',
@@ -77,19 +80,22 @@ const Subjects: CollectionConfig = {
             });
           }
         } catch (err) {
-          console.error('❌ Hook failed:', err);
+          console.error('❌ Subject Hook failed:', err);
         }
       },
     ],
     afterDelete: [
       async ({ doc }) => {
-        // ISR Revalidation on delete
         if (process.env.NEXT_PUBLIC_SITE_URL) {
           try {
             await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ slug: doc.slug, type: 'subject', secret: process.env.REVALIDATE_TOKEN }),
+              body: JSON.stringify({ 
+                slug: doc.slug, 
+                type: 'subject', 
+                secret: process.env.REVALIDATE_TOKEN 
+              }),
             });
           } catch (err) {
             console.error('❌ ISR Delete Revalidation failed:', err);

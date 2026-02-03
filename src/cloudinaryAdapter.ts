@@ -13,12 +13,13 @@ export const cloudinaryAdapter = (): Adapter => {
     return {
       name: 'cloudinary',
       // ✅ Added 'prefix' here to catch the value from your payload.config.ts
+      // cloudinaryAdapter.ts (Update handleUpload and generateURL)
+
       handleUpload: async ({ file, prefix }) => {
         const uploadResult = await new Promise<UploadApiResponse>((resolve, reject) => {
           const uploadStream = cloudinary.uploader.upload_stream(
             {
               resource_type: 'auto',
-              // ✅ Use the prefix passed from the config
               folder: prefix || 'payload-subjects', 
             },
             (error, result) => {
@@ -29,20 +30,26 @@ export const cloudinaryAdapter = (): Adapter => {
           uploadStream.end(file.buffer)
         })
 
-        // ✅ IMPORTANT: Store the full public_id. 
-        // Cloudinary needs the path to find the file later.
-        file.filename = uploadResult.public_id 
+        // 🚨 THE FIX: 
+        // If public_id is "payload-subjects/abc", we only want to store "abc" in Payload's filename field.
+        // Payload will use your 'prefix' config to put it back together.
+        const pathParts = uploadResult.public_id.split('/');
+        file.filename = pathParts[pathParts.length - 1]; 
+        
         return file
+      },
+
+      generateURL: ({ filename, prefix }) => {
+        // If filename is "abc" and prefix is "payload-subjects", 
+        // we manually join them to get the correct Cloudinary URL.
+        const fullPath = prefix ? `${prefix}/${filename}` : filename;
+        return cloudinary.url(fullPath, { secure: true });
       },
       handleDelete: async ({ filename }) => {
         await cloudinary.uploader.destroy(filename)
       },
-      generateURL: ({ filename }) => {
-        // ✅ Cloudinary IDs with slashes should NOT be re-prefixed here.
-        // This returns the direct, correct URL.
-        return cloudinary.url(filename, { secure: true })
-      },
       staticHandler: () => {},
     }
   }
+  
 }
