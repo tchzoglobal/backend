@@ -63,15 +63,15 @@ export default buildConfig({
   sharp,
 
   plugins: [
-    isCloudinaryConfigured
-      ? cloudStoragePlugin({
-          collections: {
-            media: {
-              adapter: cloudinaryAdapter(),
-              prefix: 'subjects', // 🔥 CRITICAL FIX
-            },
+  isCloudinaryConfigured
+    ? cloudStoragePlugin({
+        collections: {
+          media: {
+            adapter: cloudinaryAdapter(),
+            prefix: 'subjects',
           },
-        })
-      : (config) => config,
-  ],
+        },
+      })
+    : (config) => config,
+],
 })
