@@ -9,7 +9,7 @@ export const Media: CollectionConfig = {
     // When using Cloudinary, these local settings act as fallbacks 
     // or base configurations for the storage adapter.
     staticDir: 'media',
-    adminThumbnail: 'thumbnail',
+    adminThumbnail: 'url',
     mimeTypes: ['image/*'],
   },
   fields: [

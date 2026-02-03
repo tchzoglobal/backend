@@ -1,5 +1,5 @@
 import { cloudStoragePlugin } from '@payloadcms/plugin-cloud-storage'
-import { cloudinaryAdapter } from './cloudinaryAdapter' // Import your new file
+import { cloudinaryAdapter } from './cloudinaryAdapter'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
@@ -23,8 +23,7 @@ const isCloudinaryConfigured = Boolean(
   process.env.CLOUDINARY_CLOUD_NAME &&
   process.env.CLOUDINARY_API_KEY &&
   process.env.CLOUDINARY_API_SECRET
-);
-
+)
 
 export default buildConfig({
   admin: {
@@ -33,44 +32,43 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  
+
   serverURL: process.env.PAYLOAD_PUBLIC_SERVER_URL || 'http://localhost:3000',
-  
+
   cors: [
     'http://localhost:3001',
     'http://192.168.0.107:3001',
     'http://localhost:19006',
-    process.env.NEXT_PUBLIC_SITE_URL || '', 
-  ].filter(Boolean), 
+    process.env.NEXT_PUBLIC_SITE_URL || '',
+  ].filter(Boolean),
 
   collections: [
-    Users, 
-    Media, 
-    Boards, 
-    Grades, 
-    Mediums, 
-    Subjects, 
-    Lessons, 
-    Resources
+    Users,
+    Media,
+    Boards,
+    Grades,
+    Mediums,
+    Subjects,
+    Lessons,
+    Resources,
   ],
-  
+
   editor: lexicalEditor({}),
-  
   secret: process.env.PAYLOAD_SECRET || '',
-  
+
   db: mongooseAdapter({
     url: process.env.DATABASE_URI || '',
   }),
-  
+
   sharp,
-  
+
   plugins: [
-    isCloudinaryConfigured 
+    isCloudinaryConfigured
       ? cloudStoragePlugin({
           collections: {
             media: {
               adapter: cloudinaryAdapter(),
-              
+              prefix: 'subjects', // 🔥 CRITICAL FIX
             },
           },
         })
