@@ -20,7 +20,11 @@ export const cloudinaryAdapter = (): Adapter => {
           const uploadStream = cloudinary.uploader.upload_stream(
             {
               resource_type: 'auto',
+              // Use the prefix from config, or fallback
               folder: prefix || 'payload-subjects', 
+              // Force Cloudinary to NOT use the filename to avoid collisions
+              use_filename: false, 
+              unique_filename: true,
             },
             (error, result) => {
               if (error) return reject(error)
@@ -30,12 +34,13 @@ export const cloudinaryAdapter = (): Adapter => {
           uploadStream.end(file.buffer)
         })
 
-        // 🚨 THE FIX: 
-        // If public_id is "payload-subjects/abc", we only want to store "abc" in Payload's filename field.
-        // Payload will use your 'prefix' config to put it back together.
-        const pathParts = uploadResult.public_id.split('/');
-        file.filename = pathParts[pathParts.length - 1]; 
-        
+        // 🚨 THE STUBBORN FIX:
+        // Cloudinary returns 'payload-subjects/abc'. 
+        // We want to store JUST 'abc' because Payload adds the prefix back automatically.
+        const rawId = uploadResult.public_id; 
+        // Add the '|| rawId' at the end to ensure a string is always returned
+        file.filename = rawId.includes('/') ? (rawId.split('/').pop() || rawId) : rawId;
+
         return file
       },
 

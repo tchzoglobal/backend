@@ -1,7 +1,8 @@
-import { CollectionConfig } from 'payload';
+import { CollectionConfig } from 'payload'
 
 const Subjects: CollectionConfig = {
   slug: 'subjects',
+  // ✅ Preserved custom indexes for performance
   indexes: [
     { fields: ['board', 'medium', 'grade'] },
     { fields: ['name'] },
@@ -26,6 +27,7 @@ const Subjects: CollectionConfig = {
       relationTo: 'media',
       required: true,
     },
+    // ✅ Metadata fields synchronized from the Media collection
     {
       name: 'cloudinaryURL',
       type: 'text',
@@ -41,33 +43,35 @@ const Subjects: CollectionConfig = {
   hooks: {
     afterChange: [
       async ({ doc, req }) => {
+        // Only proceed if an image is attached
         if (!doc.image) return;
 
         try {
-          // Get the ID of the media document
+          // 1. Resolve the ID of the attached media
           const mediaId = typeof doc.image === 'object' ? doc.image.id : doc.image;
 
-          // Fetch the full Media document
+          // 2. Fetch the "Source of Truth" from the Media collection
           const mediaDoc = await req.payload.findByID({
             collection: 'media',
             id: mediaId,
           });
 
-          // Check if we need to sync the URL and PublicID to this Subject
-          // We use the raw mediaDoc.url which is generated correctly by the adapter
+          // 3. Update the Subject record only if the data is missing or mismatched
+          // This prevents infinite loops while ensuring data is always fresh
           if (mediaDoc && mediaDoc.url !== doc.cloudinaryURL) {
             await req.payload.update({
               collection: 'subjects',
               id: doc.id,
               data: {
                 cloudinaryURL: mediaDoc.url,
-                // Using filename as fallback if public_id isn't explicitly on the doc
-                cloudinaryPublicId: (mediaDoc as any).public_id || mediaDoc.filename, 
+                // We use the filename or the custom public_id field if present
+                cloudinaryPublicId: (mediaDoc as any).public_id || mediaDoc.filename,
               },
             });
           }
 
-          // ISR Revalidation
+          // 🔹 Next.js ISR Revalidation
+          // This clears the cache on your Vercel frontend automatically
           if (process.env.NEXT_PUBLIC_SITE_URL) {
             await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
               method: 'POST',
@@ -80,12 +84,13 @@ const Subjects: CollectionConfig = {
             });
           }
         } catch (err) {
-          console.error('❌ Subject Hook failed:', err);
+          console.error('❌ Subject Hook Sync/ISR failed:', err);
         }
       },
     ],
     afterDelete: [
       async ({ doc }) => {
+        // Ensure the deleted content is also removed from the Next.js cache
         if (process.env.NEXT_PUBLIC_SITE_URL) {
           try {
             await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
