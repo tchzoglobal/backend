@@ -41,30 +41,38 @@ const Subjects: CollectionConfig = {
     // 🔥 Use beforeChange to inject data directly into the save operation
     beforeChange: [
       async ({ data, req }) => {
-        if (data.image) {
-          try {
-            // 1. Fetch the media document being linked
-            const mediaDoc = await req.payload.findByID({
-              collection: 'media',
-              id: data.image,
-              depth: 0, // Keep it light
-            });
-
-            if (mediaDoc) {
-              // 2. Map the media data directly to the incoming subject data
-              data.cloudinaryURL = mediaDoc.url || '';
-              data.cloudinaryPublicId = (mediaDoc as any).public_id || mediaDoc.filename || '';
-              
-              console.log('✅ Success: Injecting Cloudinary data into Subject save');
-            }
-          } catch (err) {
-            console.error('❌ Hook Error:', err);
-          }
+        // If there is no image linked, clear the Cloudinary fields
+        if (!data.image) {
+          data.cloudinaryURL = '';
+          data.cloudinaryPublicId = '';
+          return data;
         }
-        return data; // Return the modified data to be saved
+
+        try {
+          // Fetch the linked Media document to get the fresh Cloudinary data
+          const mediaDoc = await req.payload.findByID({
+            collection: 'media',
+            id: data.image,
+            depth: 0, 
+          });
+
+          if (mediaDoc) {
+            // Force the fields to update with the Media's current URL and Public ID
+            data.cloudinaryURL = mediaDoc.url || '';
+            
+            // Handle the public_id based on how your Media collection stores it
+            data.cloudinaryPublicId = (mediaDoc as any).public_id || mediaDoc.filename || '';
+            
+            console.log('✅ Successfully injected fresh Cloudinary data');
+          }
+        } catch (err) {
+          console.error('❌ Failed to sync Media data to Subject:', err);
+        }
+
+        return data; // Return the modified data to the database
       },
     ],
-    // Keep afterChange strictly for Next.js Revalidation (Side effects)
+    // Keep afterChange only for Next.js revalidation
     afterChange: [
       async ({ doc }) => {
         if (process.env.NEXT_PUBLIC_SITE_URL) {
@@ -79,7 +87,7 @@ const Subjects: CollectionConfig = {
               }),
             });
           } catch (err) {
-            console.error('❌ ISR Revalidation failed:', err);
+            console.error('❌ Revalidation failed:', err);
           }
         }
       },
