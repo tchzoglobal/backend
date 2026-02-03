@@ -13,12 +13,12 @@ export const cloudinaryAdapter = (): Adapter => {
     return {
       name: 'cloudinary',
 
-      handleUpload: async ({ file, prefix }) => {
+      handleUpload: async ({ file }) => {
         const uploadResult = await new Promise<UploadApiResponse>((resolve, reject) => {
           const uploadStream = cloudinary.uploader.upload_stream(
             {
               resource_type: 'image',
-              folder: prefix || collection.slug,
+              folder: 'subjects',
               use_filename: false,
               unique_filename: true,
             },
@@ -44,8 +44,8 @@ export const cloudinaryAdapter = (): Adapter => {
        * ✅ THIS IS THE IMPORTANT PART
        * Payload calls this with `size` for thumbnails
        */
-      generateURL: ({ filename, prefix, size }) => {
-        const publicId = prefix ? `${prefix}/${filename}` : filename
+      generateURL: ({ filename, size }) => {
+        const publicId = `subjects/${filename}`
 
         const transformation: any = {
           secure: true,
@@ -61,8 +61,8 @@ export const cloudinaryAdapter = (): Adapter => {
         return cloudinary.url(publicId, transformation)
       },
 
-      handleDelete: async ({ filename, prefix }) => {
-        const publicId = prefix ? `${prefix}/${filename}` : filename
+      handleDelete: async ({ filename }) => {
+        const publicId = `subjects/${filename}`
         await cloudinary.uploader.destroy(publicId)
       },
 
