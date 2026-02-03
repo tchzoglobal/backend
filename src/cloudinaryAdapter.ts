@@ -13,39 +13,26 @@ export const cloudinaryAdapter = (): Adapter => {
     return {
       name: 'cloudinary',
 
-      handleUpload: async ({ file }) => {
-  const uploadResult = await new Promise<UploadApiResponse>((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        resource_type: 'image',
-        unique_filename: true,
+      handleUpload: async ({ file, prefix }) => {
+        const uploadResult = await cloudinary.uploader.upload(file.path, {
+          folder: prefix || 'subjects',
+          resource_type: 'image',
+        })
+
+        const mutableFile = file as any
+
+        mutableFile.filename = uploadResult.public_id.split('/').pop()!
+        mutableFile.mimeType = `image/${uploadResult.format}`
+        mutableFile.width = uploadResult.width
+        mutableFile.height = uploadResult.height
+        mutableFile.filesize = uploadResult.bytes
+
+        mutableFile.url = cloudinary.url(uploadResult.public_id, {
+          secure: true,
+          fetch_format: 'auto',
+          quality: 'auto',
+        })
       },
-      (error, result) => {
-        if (error) return reject(error)
-        if (!result) return reject(new Error('Cloudinary upload failed'))
-        resolve(result)
-      }
-    )
-
-    if (file.buffer) {
-      uploadStream.end(file.buffer)
-    } else if (file.stream) {
-      file.stream.pipe(uploadStream)
-    } else {
-      reject(new Error('No file buffer or stream'))
-    }
-  })
-
-  const mutableFile = file as any
-
-  mutableFile.filename = uploadResult.public_id.split('/').pop()!
-  mutableFile.mimeType = `image/${uploadResult.format}`
-  mutableFile.width = uploadResult.width
-  mutableFile.height = uploadResult.height
-  mutableFile.filesize = uploadResult.bytes
-
-  return file
-},
 
       generateURL: (args: any) => {
         // 🔒 NEVER destructure blindly
