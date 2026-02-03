@@ -14,34 +14,38 @@ export const cloudinaryAdapter = (): Adapter => {
       name: 'cloudinary',
 
       handleUpload: async ({ file }) => {
-        const uploadResult = await new Promise<UploadApiResponse>((resolve, reject) => {
-          const uploadStream = cloudinary.uploader.upload_stream(
-            {
-              resource_type: 'image',
-              unique_filename: true,
-            },
-            (error, result) => {
-              if (error) return reject(error)
-              if (!result) return reject(new Error('Cloudinary upload failed'))
-              resolve(result)
-            }
-          )
-
-          // Payload v2 safe
-          if (file.buffer) {
-            uploadStream.end(file.buffer)
-          } else if (file.stream) {
-            file.stream.pipe(uploadStream)
-          } else {
-            reject(new Error('No file buffer or stream'))
-          }
-        })
-
-        // IMPORTANT: store only filename
-        file.filename = uploadResult.public_id.split('/').pop()!
-        file.mimeType = `image/${uploadResult.format}`
-        return file
+  const uploadResult = await new Promise<UploadApiResponse>((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        resource_type: 'image',
+        unique_filename: true,
       },
+      (error, result) => {
+        if (error) return reject(error)
+        if (!result) return reject(new Error('Cloudinary upload failed'))
+        resolve(result)
+      }
+    )
+
+    if (file.buffer) {
+      uploadStream.end(file.buffer)
+    } else if (file.stream) {
+      file.stream.pipe(uploadStream)
+    } else {
+      reject(new Error('No file buffer or stream'))
+    }
+  })
+
+  const mutableFile = file as any
+
+  mutableFile.filename = uploadResult.public_id.split('/').pop()!
+  mutableFile.mimeType = `image/${uploadResult.format}`
+  mutableFile.width = uploadResult.width
+  mutableFile.height = uploadResult.height
+  mutableFile.filesize = uploadResult.bytes
+
+  return file
+},
 
       generateURL: (args: any) => {
         // 🔒 NEVER destructure blindly
