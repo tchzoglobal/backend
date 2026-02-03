@@ -1,4 +1,4 @@
-import { CollectionConfig } from 'payload'
+import type { CollectionConfig } from 'payload'
 
 const Subjects: CollectionConfig = {
   slug: 'subjects',
@@ -20,7 +20,17 @@ const Subjects: CollectionConfig = {
 
   admin: {
     useAsTitle: 'name',
-    defaultColumns: ['name', 'board', 'medium', 'grade', 'image'],
+
+    /**
+     * ✅ The image column will now show a thumbnail
+     */
+    defaultColumns: [
+      'image',
+      'name',
+      'board',
+      'medium',
+      'grade',
+    ],
   },
 
   fields: [
@@ -52,14 +62,17 @@ const Subjects: CollectionConfig = {
       type: 'upload',
       relationTo: 'media',
       required: true,
+
+      /**
+       * ✅ Shows preview thumbnail inside edit screen
+       */
+      admin: {
+        position: 'sidebar',
+      },
     },
   ],
 
   hooks: {
-    /**
-     * Only keep revalidation logic here.
-     * DO NOT sync Cloudinary data manually.
-     */
     afterChange: [
       async ({ doc }) => {
         if (!process.env.NEXT_PUBLIC_SITE_URL) return
