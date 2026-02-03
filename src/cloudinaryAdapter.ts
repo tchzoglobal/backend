@@ -39,6 +39,7 @@ export const cloudinaryAdapter = (): Adapter => {
 
         // IMPORTANT: store only filename
         file.filename = uploadResult.public_id.split('/').pop()!
+        file.mimeType = `image/${uploadResult.format}`
         return file
       },
 
