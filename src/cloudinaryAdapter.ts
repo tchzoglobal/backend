@@ -14,51 +14,46 @@ export const cloudinaryAdapter = (): Adapter => {
       name: 'cloudinary',
 
       handleUpload: async ({ file }) => {
-        const uploadResult = await new Promise<UploadApiResponse>((resolve, reject) => {
-          const uploadStream = cloudinary.uploader.upload_stream(
-            {
-              resource_type: 'image',
-              folder: 'subjects',
-              use_filename: false,
-              unique_filename: true,
-            },
-            (error, result) => {
-              if (error) return reject(error)
-              resolve(result!)
-            }
-          )
+  if (file.filename) {
+    // prevents re-upload for derived sizes
+    return file
+  }
 
-          uploadStream.end(file.buffer)
-        })
-
-        // Store ONLY the public_id without folder
-        const publicId = uploadResult.public_id
-        file.filename = publicId.includes('/')
-          ? publicId.split('/').pop()!
-          : publicId
-
-        return file
+  const uploadResult = await new Promise<UploadApiResponse>((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        resource_type: 'image',
+        folder: 'subjects',
+        unique_filename: true,
       },
+      (error, result) => {
+        if (error) return reject(error)
+        resolve(result!)
+      }
+    )
+
+    uploadStream.end(file.buffer)
+  })
+
+  file.filename = uploadResult.public_id.split('/').pop()!
+  return file
+},
 
       /**
        * ✅ THIS IS THE IMPORTANT PART
        * Payload calls this with `size` for thumbnails
        */
-      generateURL: ({ filename, size }) => {
+      generateURL: ({ filename, size }: any) => {
         const publicId = `subjects/${filename}`
 
-        const transformation: any = {
+        return cloudinary.url(publicId, {
           secure: true,
-        }
-
-        if (size) {
-          transformation.width = size.width
-          transformation.height = size.height
-          transformation.crop = size.crop || 'fill'
-          transformation.format = size.formatOptions?.format || undefined
-        }
-
-        return cloudinary.url(publicId, transformation)
+          width: size?.width,
+          height: size?.height,
+          crop: size?.crop || 'fill',
+          fetch_format: 'auto',
+          quality: 'auto',
+        })
       },
 
       handleDelete: async ({ filename }) => {
