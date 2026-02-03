@@ -40,38 +40,40 @@ const Subjects: CollectionConfig = {
   hooks: {
     // 🔥 Use beforeChange to inject data directly into the save operation
     beforeChange: [
-      async ({ data, req }) => {
-        // If there is no image linked, clear the Cloudinary fields
-        if (!data.image) {
-          data.cloudinaryURL = '';
-          data.cloudinaryPublicId = '';
-          return data;
+    async ({ data, req }) => {
+      // 1. CLEAR OLD DATA IMMEDIATELY
+      // This ensures that even if the next step fails, 
+      // the old, incorrect URL is gone.
+      data.cloudinaryURL = '';
+      data.cloudinaryPublicId = '';
+
+      // 2. If no image is selected, we stop here (fields stay empty)
+      if (!data.image) {
+        return data;
+      }
+
+      try {
+        // 3. Fetch the NEW Media document
+        const mediaDoc = await req.payload.findByID({
+          collection: 'media',
+          id: data.image,
+          depth: 0, 
+        });
+
+        if (mediaDoc) {
+          // 4. Inject the NEW data from the new file
+          data.cloudinaryURL = mediaDoc.url || '';
+          data.cloudinaryPublicId = (mediaDoc as any).public_id || mediaDoc.filename || '';
+          
+          console.log(`✅ Syncing new image: ${data.cloudinaryPublicId}`);
         }
+      } catch (err) {
+        console.error('❌ Hook failed to fetch new media data:', err);
+      }
 
-        try {
-          // Fetch the linked Media document to get the fresh Cloudinary data
-          const mediaDoc = await req.payload.findByID({
-            collection: 'media',
-            id: data.image,
-            depth: 0, 
-          });
-
-          if (mediaDoc) {
-            // Force the fields to update with the Media's current URL and Public ID
-            data.cloudinaryURL = mediaDoc.url || '';
-            
-            // Handle the public_id based on how your Media collection stores it
-            data.cloudinaryPublicId = (mediaDoc as any).public_id || mediaDoc.filename || '';
-            
-            console.log('✅ Successfully injected fresh Cloudinary data');
-          }
-        } catch (err) {
-          console.error('❌ Failed to sync Media data to Subject:', err);
-        }
-
-        return data; // Return the modified data to the database
-      },
-    ],
+      return data;
+    },
+  ],
     // Keep afterChange only for Next.js revalidation
     afterChange: [
       async ({ doc }) => {
