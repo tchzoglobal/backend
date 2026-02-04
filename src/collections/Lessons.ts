@@ -17,6 +17,7 @@ const Lessons: CollectionConfig = {
   },
   admin: {
     useAsTitle: 'title',
+    defaultColumns: ['title', 'subject', 'board', 'grade', 'medium'],
   },
   fields: [
     {
