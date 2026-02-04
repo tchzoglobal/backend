@@ -15,14 +15,14 @@ export const Media: CollectionConfig = {
     mimeTypes: ['image/*'],
     // This function forces the Admin UI to use the Cloudinary URL for previews
     adminThumbnail: ({ doc }) => {
-      // If a full Cloudinary URL exists in the 'url' field, use it
-      if (doc.url && (doc.url as string).includes('cloudinary')) {
-        return doc.url as string
-      }
+      // If the URL is already in the database (new uploads), use it
+      if (doc.url) return doc.url as string;
       
-      // Fallback for your existing records: manually construct the Cloudinary link
-      // Use your Cloudinary cloud name: dv5xdsw9a
-      return `https://res.cloudinary.com/dv5xdsw9a/image/upload/subjects/${doc.filename}`
+      // FALLBACK for your existing MongoDB records:
+      // Construct the Cloudinary URL manually using your cloud name and the filename in DB
+      const cloudName = 'dv5xdsw9a'; 
+      const folder = doc.prefix || 'subjects';
+      return `https://res.cloudinary.com/${cloudName}/image/upload/${folder}/${doc.filename}`;
     },
   },
   fields: [

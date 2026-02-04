@@ -17,6 +17,8 @@ export const cloudinaryAdapter = (): Adapter => {
             {
               folder: prefix,
               resource_type: 'image',
+              // Use the original filename or Cloudinary's generated ID
+              public_id: file.filename.split('.')[0], 
             },
             (err, res) => {
               if (err) reject(err)
@@ -28,26 +30,29 @@ export const cloudinaryAdapter = (): Adapter => {
 
         const f = file as any
         
-        // Use the actual public_id filename from Cloudinary
-        f.filename = result.public_id.split('/').pop() 
+        // Ensure the filename in the DB matches Cloudinary's result
+        f.filename = `${result.public_id.split('/').pop()}.${result.format}`
         f.mimeType = `image/${result.format}`
         f.filesize = result.bytes
         f.width = result.width
         f.height = result.height
         
-        // ✅ SAVE THE FULL CLOUDINARY URL
-        // This prevents Payload from defaulting to /api/media/file/...
+        // ✅ CRITICAL: Save the full working URL to MongoDB
+        // This stops Payload from using its internal /api/media/file/ link
         f.url = result.secure_url 
 
         return f
       },
 
       generateURL({ filename }) {
+        // Fallback generator
         return `https://res.cloudinary.com/dv5xdsw9a/image/upload/subjects/${filename}`
       },
 
       async handleDelete({ filename }) {
-        await cloudinary.uploader.destroy(`${prefix}/${filename}`)
+        // Remove the extension for Cloudinary deletion
+        const publicId = filename.split('.')[0]
+        await cloudinary.uploader.destroy(`${prefix}/${publicId}`)
       },
 
       staticHandler: () => {},
