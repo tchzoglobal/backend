@@ -6,10 +6,16 @@ export const Media: CollectionConfig = {
   access: {
     read: () => true,
   },
+  admin: {
+    // This tells Payload which field to use for the thumbnail in the list view
+    useAsTitle: 'alt',
+    defaultColumns: ['filename', 'alt', 'url'],
+  },
 
   upload: {
     disableLocalStorage: true,
     mimeTypes: ['image/*'],
+    adminThumbnail: 'thumbnail',
   },
 
   fields: [

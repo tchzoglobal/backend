@@ -30,7 +30,7 @@ export const cloudinaryAdapter = (): Adapter => {
 
         const f = file as any
 
-        f.filename = result.public_id.split('/').pop()
+        f.filename = result.public_id
         f.mimeType = `image/${result.format}`
         f.filesize = result.bytes
         f.width = result.width
@@ -47,7 +47,7 @@ export const cloudinaryAdapter = (): Adapter => {
       },
 
       generateURL({ filename, size }) {
-        return cloudinary.url(`${prefix}/${filename}`, {
+        return cloudinary.url(filename, {
           secure: true,
           width: size?.width,
           height: size?.height,
