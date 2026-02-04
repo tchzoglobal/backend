@@ -2,22 +2,20 @@ import type { CollectionConfig } from 'payload'
 
 export const Media: CollectionConfig = {
   slug: 'media',
-
+  admin: {
+    useAsTitle: 'alt',
+    // Helps with debugging to see the actual URL in the list
+    defaultColumns: ['filename', 'alt', 'url'],
+  },
   access: {
     read: () => true,
   },
-  admin: {
-    // This tells Payload which field to use for the thumbnail in the list view
-    useAsTitle: 'alt',
-    defaultColumns: ['filename', 'alt', 'url'],
-  },
-
   upload: {
     disableLocalStorage: true,
     mimeTypes: ['image/*'],
-    adminThumbnail: 'thumbnail',
+    // This function forces the Admin UI to use the Cloudinary URL for previews
+    adminThumbnail: ({ doc }) => doc.url as string,
   },
-
   fields: [
     {
       name: 'alt',

@@ -25,43 +25,39 @@ export const cloudinaryAdapter = (): Adapter => {
             }
           )
 
-          stream.end(file.buffer) // ✅ ONLY correct way
+          stream.end(file.buffer)
         })
 
         const f = file as any
 
-        f.filename = result.public_id
+        // Store the full public_id so generateURL knows exactly what to fetch
+        f.filename = result.public_id 
         f.mimeType = `image/${result.format}`
         f.filesize = result.bytes
         f.width = result.width
         f.height = result.height
 
-        // 🔥 REQUIRED FOR /api/media
-        f.url = cloudinary.url(result.public_id, {
-          secure: true,
-          fetch_format: 'auto',
-          quality: 'auto',
-        })
+        // This is the actual URL saved to the 'url' field in the database
+        f.url = result.secure_url
 
         return f
       },
 
-      generateURL({ filename, size }) {
+      generateURL({ filename }) {
+        // Since we stored the public_id as the filename, we just call cloudinary.url
         return cloudinary.url(filename, {
           secure: true,
-          width: size?.width,
-          height: size?.height,
-          crop: size?.crop || 'fill',
           fetch_format: 'auto',
           quality: 'auto',
         })
       },
 
       async handleDelete({ filename }) {
-        await cloudinary.uploader.destroy(`${prefix}/${filename}`)
+        // Filename is the public_id
+        await cloudinary.uploader.destroy(filename)
       },
 
-      staticHandler() {},
+      staticHandler: () => {}, // Keep empty to prevent Payload from trying to serve the file
     }
   }
 }
