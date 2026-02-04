@@ -11,7 +11,6 @@ export const cloudinaryAdapter = (): Adapter => {
 
     return {
       name: 'cloudinary',
-
       async handleUpload({ file }) {
         const result = await new Promise<UploadApiResponse>((resolve, reject) => {
           const stream = cloudinary.uploader.upload_stream(
@@ -24,40 +23,34 @@ export const cloudinaryAdapter = (): Adapter => {
               else resolve(res!)
             }
           )
-
           stream.end(file.buffer)
         })
 
         const f = file as any
-
-        // Store the full public_id so generateURL knows exactly what to fetch
-        f.filename = result.public_id 
+        
+        // Use the actual public_id filename from Cloudinary
+        f.filename = result.public_id.split('/').pop() 
         f.mimeType = `image/${result.format}`
         f.filesize = result.bytes
         f.width = result.width
         f.height = result.height
-
-        // This is the actual URL saved to the 'url' field in the database
-        f.url = result.secure_url
+        
+        // ✅ SAVE THE FULL CLOUDINARY URL
+        // This prevents Payload from defaulting to /api/media/file/...
+        f.url = result.secure_url 
 
         return f
       },
 
       generateURL({ filename }) {
-        // Since we stored the public_id as the filename, we just call cloudinary.url
-        return cloudinary.url(filename, {
-          secure: true,
-          fetch_format: 'auto',
-          quality: 'auto',
-        })
+        return `https://res.cloudinary.com/dv5xdsw9a/image/upload/subjects/${filename}`
       },
 
       async handleDelete({ filename }) {
-        // Filename is the public_id
-        await cloudinary.uploader.destroy(filename)
+        await cloudinary.uploader.destroy(`${prefix}/${filename}`)
       },
 
-      staticHandler: () => {}, // Keep empty to prevent Payload from trying to serve the file
+      staticHandler: () => {},
     }
   }
 }
