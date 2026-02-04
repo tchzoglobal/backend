@@ -1,4 +1,4 @@
-import { v2 as cloudinary, UploadApiResponse } from 'cloudinary'
+import { v2 as cloudinary } from 'cloudinary'
 import type { Adapter } from '@payloadcms/plugin-cloud-storage/types'
 
 export const cloudinaryAdapter = (): Adapter => {
@@ -13,18 +13,25 @@ export const cloudinaryAdapter = (): Adapter => {
       name: 'cloudinary',
 
       async handleUpload({ file }) {
-        const uploadResult = await cloudinary.uploader.upload(file.path, {
-          folder: prefix, // ✅ THIS NOW WORKS
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: prefix,
           resource_type: 'image',
         })
 
         const f = file as any
 
-        f.filename = uploadResult.public_id.split('/').pop()
-        f.mimeType = `image/${uploadResult.format}`
-        f.filesize = uploadResult.bytes
-        f.width = uploadResult.width
-        f.height = uploadResult.height
+        f.filename = result.public_id.split('/').pop()
+        f.mimeType = `image/${result.format}`
+        f.filesize = result.bytes
+        f.width = result.width
+        f.height = result.height
+
+        // 🔥 THIS FIXES THE 500 ERROR
+        f.url = cloudinary.url(result.public_id, {
+          secure: true,
+          fetch_format: 'auto',
+          quality: 'auto',
+        })
 
         return f
       },
