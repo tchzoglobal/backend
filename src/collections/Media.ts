@@ -5,8 +5,6 @@ export const Media: CollectionConfig = {
 
   admin: {
     useAsTitle: "alt",
-
-    // Helpful in admin list view
     defaultColumns: ["filename", "alt", "url"],
   },
 
@@ -18,32 +16,15 @@ export const Media: CollectionConfig = {
     disableLocalStorage: true,
     mimeTypes: ["image/*"],
 
-    /* -------------------------------------------------
-       Cloudinary Folder Routing (IMPORTANT)
-       Uses `prefix` saved on doc OR falls back
-    -------------------------------------------------- */
-    // NOTE:
-    // Your Cloudinary adapter must store folder in `prefix`
-    // If not, set it in adapter config instead.
-
-    /* -------------------------------------------------
+    /* ---------------------------------------------
        Admin Thumbnail Preview
-    -------------------------------------------------- */
+    ---------------------------------------------- */
     adminThumbnail: ({ doc }) => {
-      // ✅ New uploads (URL already saved)
       if (doc?.url) return doc.url as string;
 
-      // ⚠️ Fallback for legacy DB records
       const cloudName = "dv5xdsw9a";
-
-      // Folder priority:
-      // 1. Stored prefix
-      // 2. Resource infographs → lessons
-      // 3. Default → subjects
       const folder =
-        doc?.prefix ||
-        doc?.folder ||
-        "subjects";
+        doc?.prefix || "subjects";
 
       return `https://res.cloudinary.com/${cloudName}/image/upload/${folder}/${doc.filename}`;
     },
@@ -56,42 +37,52 @@ export const Media: CollectionConfig = {
       required: true,
     },
 
-    /* -------------------------------------------------
-       Folder / Prefix Tracker (for routing + fallback)
-    -------------------------------------------------- */
     {
       name: "prefix",
       type: "text",
       admin: {
         readOnly: true,
-        description:
-          "Cloudinary folder prefix (auto-assigned)",
       },
     },
   ],
 
-  /* -------------------------------------------------
-     Auto-assign Cloudinary folder by collection usage
-  -------------------------------------------------- */
+  /* ---------------------------------------------
+     Folder Assignment Logic
+  ---------------------------------------------- */
   hooks: {
     beforeChange: [
-      async ({ data, req }) => {
-        try {
-          // Detect which collection is uploading
-          const referrer =
-            req.headers.get("referer") || "";
+      async ({ data, req, operation }) => {
+        if (operation !== "create") return data;
 
-          if (referrer.includes("subjects")) {
+        try {
+          /**
+           * Payload passes collection context
+           * via query params in admin uploads
+           */
+          const resource =
+            req?.query?.collection ||
+            req?.body?.collection ||
+            "";
+
+          /* ---- Routing ---- */
+
+          if (resource === "subjects") {
             data.prefix = "subjects";
-          } else if (referrer.includes("lessons")) {
+          }
+
+          else if (resource === "lessons") {
             data.prefix = "lessons";
-          } else if (referrer.includes("resources")) {
-            // ✅ Your requirement:
-            // Infographs → lessons folder
+          }
+
+          else if (resource === "resources") {
+            // ✅ Infographs go to lessons folder
             data.prefix = "lessons";
-          } else {
+          }
+
+          else {
             data.prefix = "misc";
           }
+
         } catch (err) {
           console.error(
             "❌ Media prefix assignment failed:",
