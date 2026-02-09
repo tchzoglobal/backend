@@ -70,24 +70,7 @@ export default buildConfig({
             adapter: cloudinaryAdapter(),
 
             /* CRASH-PROOF DYNAMIC PREFIX */
-            prefix: (args) => {
-              if (!args) return 'misc';
-
-              // Document context
-              if (
-                args.doc &&
-                typeof args.doc.prefix === 'string'
-              ) {
-                return args.doc.prefix;
-              }
-
-              // File context fallback
-              if (args.filename) {
-                return 'misc';
-              }
-
-              return 'misc';
-            },
+            prefix: "subjects"
           },
         },
       })
