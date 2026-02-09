@@ -33,7 +33,9 @@ export default buildConfig({
     },
   },
 
-  serverURL: process.env.PAYLOAD_PUBLIC_SERVER_URL || 'http://localhost:3000',
+  serverURL:
+    process.env.PAYLOAD_PUBLIC_SERVER_URL ||
+    'http://localhost:3000',
 
   cors: [
     'http://localhost:3001',
@@ -63,19 +65,17 @@ export default buildConfig({
   sharp,
 
   plugins: [
-  isCloudinaryConfigured
-    ? cloudStoragePlugin({
-        collections: {
-          media: {
-            adapter: cloudinaryAdapter(),
+    isCloudinaryConfigured
+      ? cloudStoragePlugin({
+          collections: {
+            media: {
+              adapter: cloudinaryAdapter(),
 
-            /* CRASH-PROOF DYNAMIC PREFIX */
-            prefix: "subjects"
+              // Static fallback only
+              prefix: 'subjects',
+            },
           },
-        },
-      })
-    : (config) => config,
-],
-
-
+        })
+      : (config) => config,
+  ],
 })
