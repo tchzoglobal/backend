@@ -23,7 +23,9 @@ export const Media: CollectionConfig = {
     adminThumbnail: ({ doc }) => {
       if (doc?.url) return doc.url as string;
 
-      const cloudName = "dv5xdsw9a";
+      const cloudName =
+        process.env.CLOUDINARY_CLOUD_NAME;
+
       const folder =
         doc?.prefix || "misc";
 
@@ -47,6 +49,7 @@ export const Media: CollectionConfig = {
   ],
 
   hooks: {
+    /* ---------- PREFIX ROUTING ---------- */
     beforeChange: [
       async ({
         data,
@@ -59,8 +62,6 @@ export const Media: CollectionConfig = {
         try {
           const referer =
             req?.headers?.referer || "";
-
-          /* Routing Logic */
 
           if (
             referer.includes(
@@ -79,8 +80,7 @@ export const Media: CollectionConfig = {
               "/resources"
             )
           ) {
-            // Infographs stored with lessons
-            data.prefix = "lessons";
+            data.prefix = "misc";
           } else {
             data.prefix = "misc";
           }
@@ -94,6 +94,25 @@ export const Media: CollectionConfig = {
         }
 
         return data;
+      },
+    ],
+
+    /* ---------- URL NORMALIZER ---------- */
+    afterRead: [
+      async ({ doc }) => {
+        if (!doc) return doc;
+
+        const cloudName =
+          process.env.CLOUDINARY_CLOUD_NAME;
+
+        const folder =
+          doc.prefix || "misc";
+
+        if (doc.filename) {
+          doc.url = `https://res.cloudinary.com/${cloudName}/image/upload/${folder}/${doc.filename}`;
+        }
+
+        return doc;
       },
     ],
   },
