@@ -69,16 +69,21 @@ export default buildConfig({
           media: {
             adapter: cloudinaryAdapter(),
 
-            /* SAFE DYNAMIC PREFIX */
+            /* CRASH-PROOF DYNAMIC PREFIX */
             prefix: (args) => {
               if (!args) return 'misc';
 
-              const doc = args.doc;
+              // Document context
+              if (
+                args.doc &&
+                typeof args.doc.prefix === 'string'
+              ) {
+                return args.doc.prefix;
+              }
 
-              if (!doc) return 'misc';
-
-              if (typeof doc.prefix === 'string') {
-                return doc.prefix;
+              // File context fallback
+              if (args.filename) {
+                return 'misc';
               }
 
               return 'misc';
@@ -88,5 +93,6 @@ export default buildConfig({
       })
     : (config) => config,
 ],
+
 
 })
