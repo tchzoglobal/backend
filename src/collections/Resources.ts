@@ -13,7 +13,7 @@ const extractText = (node: any): string => {
 };
 
 /* -----------------------------------------------------------
-   Convert Lexical → Proper hierarchical mindmap
+   Convert Lexical → Hierarchical Mindmap JSON
 ------------------------------------------------------------ */
 const convertNodesToMindmap = (rootChildren: any[]) => {
   if (!Array.isArray(rootChildren)) return [];
@@ -25,7 +25,7 @@ const convertNodesToMindmap = (rootChildren: any[]) => {
     let text = "";
     for (const child of children) {
       if (child.type === "text") text += child.text + " ";
-      if (child.type === "paragraph" && Array.isArray(child.children)) {
+      if (child.type === "paragraph" && child.children) {
         text += extractListItemText(child.children);
       }
       if (child.type === "list") continue;
@@ -35,6 +35,7 @@ const convertNodesToMindmap = (rootChildren: any[]) => {
 
   const processListItem = (node: any) => {
     if (node.type !== "listitem") return;
+
     const level = (node.indent || 0) + 1;
     const text = extractListItemText(node.children);
     if (!text) return;
@@ -53,22 +54,29 @@ const convertNodesToMindmap = (rootChildren: any[]) => {
       return;
     }
 
-    while (stack.length && stack[stack.length - 1].level >= level) {
+    while (
+      stack.length &&
+      stack[stack.length - 1].level >= level
+    ) {
       stack.pop();
     }
 
     if (stack.length === 0) {
       result.push(newNode);
     } else {
-      stack[stack.length - 1].item.children.push(newNode);
+      stack[stack.length - 1].item.children.push(
+        newNode
+      );
     }
+
     stack.push({ level, item: newNode });
   };
 
   const walk = (nodes: any[]) => {
     for (const node of nodes) {
       if (!node) continue;
-      if (node.type === "listitem") processListItem(node);
+      if (node.type === "listitem")
+        processListItem(node);
       if (node.children) walk(node.children);
     }
   };
@@ -78,48 +86,79 @@ const convertNodesToMindmap = (rootChildren: any[]) => {
 };
 
 /* -----------------------------------------------------------
-   MAIN COLLECTION
+   RESOURCES COLLECTION
 ------------------------------------------------------------ */
 const Resources: CollectionConfig = {
   slug: "resources",
+
   indexes: [
-    { fields: ['lesson'] },
-    { fields: ['subject'] },
-    { fields: ['board', 'grade', 'medium'] },
-    { fields: ['subject', 'lesson'] },
-    { fields: ['lesson', 'board', 'grade', 'medium'] },
-    { fields: ['createdAt'] },
+    { fields: ["lesson"] },
+    { fields: ["subject"] },
+    { fields: ["board", "grade", "medium"] },
+    { fields: ["subject", "lesson"] },
+    { fields: ["lesson", "board", "grade", "medium"] },
+    { fields: ["createdAt"] },
   ],
+
   access: {
     read: () => true,
   },
+
   admin: {
     useAsTitle: "title",
-    defaultColumns: ['title', 'subject', 'board', 'grade', 'medium'],
+    defaultColumns: [
+      "title",
+      "subject",
+      "board",
+      "grade",
+      "medium",
+    ],
   },
-  fields: [
-    { name: "title", type: "text", required: true },
-    { name: "board", type: "relationship", relationTo: "boards", required: true },
-    { name: "medium", type: "relationship", relationTo: "mediums", required: true },
-    { name: "grade", type: "relationship", relationTo: "grades", required: true },
 
+  fields: [
+    /* ---------------- BASIC INFO ---------------- */
+    {
+      name: "title",
+      type: "text",
+      required: true,
+    },
+
+    {
+      name: "board",
+      type: "relationship",
+      relationTo: "boards",
+      required: true,
+    },
+    {
+      name: "medium",
+      type: "relationship",
+      relationTo: "mediums",
+      required: true,
+    },
+    {
+      name: "grade",
+      type: "relationship",
+      relationTo: "grades",
+      required: true,
+    },
+
+    /* ---------------- SUBJECT FILTER ---------------- */
     {
       name: "subject",
       type: "relationship",
       relationTo: "subjects",
       required: true,
-      // ✅ Explicitly typed as Where to fix index signature error
       filterOptions: ({ data }): Where => {
-        const board = data?.board;
-        const medium = data?.medium;
-        const grade = data?.grade;
-
-        if (board && medium && grade) {
+        if (
+          data?.board &&
+          data?.medium &&
+          data?.grade
+        ) {
           return {
             and: [
-              { board: { equals: board } },
-              { medium: { equals: medium } },
-              { grade: { equals: grade } },
+              { board: { equals: data.board } },
+              { medium: { equals: data.medium } },
+              { grade: { equals: data.grade } },
             ],
           };
         }
@@ -127,6 +166,7 @@ const Resources: CollectionConfig = {
       },
     },
 
+    /* ---------------- LESSON FILTER ---------------- */
     {
       name: "lesson",
       type: "relationship",
@@ -134,100 +174,230 @@ const Resources: CollectionConfig = {
       required: true,
       filterOptions: ({ data }): Where => {
         if (data?.subject) {
-          return { subject: { equals: data.subject } };
+          return {
+            subject: {
+              equals: data.subject,
+            },
+          };
         }
         return { id: { exists: false } };
       },
     },
 
-    { name: "video", type: "text", label: "Video (YouTube URL)" },
-    { name: "audio", type: "text", label: "Audio (YouTube URL)" },
-    { name: "faq", type: "richText", editor: lexicalEditor() },
-    { name: "briefingDoc", type: "richText", editor: lexicalEditor() },
-    { name: "studyGuide", type: "richText", editor: lexicalEditor() },
-    { name: "mindmap", type: "richText", editor: lexicalEditor() },
+    /* ---------------- MEDIA LINKS ---------------- */
+    {
+      name: "video",
+      type: "text",
+      label: "Video (YouTube URL)",
+    },
+    {
+      name: "audio",
+      type: "text",
+      label: "Audio (YouTube URL)",
+    },
 
+    /* ---------------- RICH TEXT ---------------- */
+    {
+      name: "faq",
+      type: "richText",
+      editor: lexicalEditor(),
+    },
+    {
+      name: "briefingDoc",
+      type: "richText",
+      editor: lexicalEditor(),
+    },
+    {
+      name: "studyGuide",
+      type: "richText",
+      editor: lexicalEditor(),
+    },
+    {
+      name: "mindmap",
+      type: "richText",
+      editor: lexicalEditor(),
+    },
+
+    /* ---------------- NEW: DATA TABLE ---------------- */
+    {
+      name: "dataTable",
+      type: "json",
+      label: "Data Table (JSON)",
+      admin: {
+        description:
+          "Paste structured JSON for tabular display",
+      },
+    },
+
+    /* ---------------- NEW: INFOGRAPH ---------------- */
+    {
+      name: "infograph",
+      type: "upload",
+      relationTo: "media",
+      label: "Infograph (Cloudinary Image)",
+      admin: {
+        position: "sidebar",
+      },
+    },
+
+    /* ---------------- GENERATED ---------------- */
     {
       name: "mindmapJSON",
       type: "json",
-      admin: { readOnly: true },
       label: "Mindmap (Generated JSON)",
+      admin: {
+        readOnly: true,
+      },
     },
   ],
 
+  /* -----------------------------------------------------------
+     HOOKS
+  ------------------------------------------------------------ */
   hooks: {
+    /* ---------- BEFORE CHANGE ---------- */
     beforeChange: [
       async ({ data }) => {
-        const mindmapRoot =
+        const root =
           data?.mindmap?.root ||
           data?.mindmap?.[0]?.root ||
           null;
 
-        if (mindmapRoot?.children) {
+        if (root?.children) {
           try {
-            data.mindmapJSON = convertNodesToMindmap(mindmapRoot.children);
+            data.mindmapJSON =
+              convertNodesToMindmap(
+                root.children
+              );
           } catch (err) {
-            console.error("❌ Mindmap conversion error:", err);
+            console.error(
+              "❌ Mindmap conversion error:",
+              err
+            );
           }
         }
+
         return data;
       },
     ],
 
+    /* ---------- AFTER CHANGE (ISR) ---------- */
     afterChange: [
-      async ({ doc, req }) => {
+      async ({ doc, previousDoc, req }) => {
         try {
-          const lessonId = typeof doc.lesson === "object" ? doc.lesson?.id : doc.lesson;
-          const subjectId = typeof doc.subject === "object" ? doc.subject?.id : doc.subject;
+          const lessonId =
+            typeof doc.lesson === "object"
+              ? doc.lesson?.id
+              : doc.lesson;
 
-          if (lessonId) {
-            await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                type: "resources",
-                lessonID: lessonId,
-                secret: process.env.REVALIDATE_TOKEN,
-              }),
-            });
+          const subjectId =
+            typeof doc.subject === "object"
+              ? doc.subject?.id
+              : doc.subject;
+
+          /* ----- Detect field changes ----- */
+          const infographChanged =
+            JSON.stringify(
+              previousDoc?.infograph
+            ) !==
+            JSON.stringify(doc?.infograph);
+
+          const dataTableChanged =
+            JSON.stringify(
+              previousDoc?.dataTable
+            ) !==
+            JSON.stringify(doc?.dataTable);
+
+          const shouldRevalidate =
+            infographChanged ||
+            dataTableChanged;
+
+          /* ----- Lesson ISR ----- */
+          if (lessonId && shouldRevalidate) {
+            await fetch(
+              `${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
+                body: JSON.stringify({
+                  type: "resources",
+                  lessonID: lessonId,
+                  reason:
+                    infographChanged
+                      ? "infograph-update"
+                      : "datatable-update",
+                  secret:
+                    process.env.REVALIDATE_TOKEN,
+                }),
+              }
+            );
           }
 
-          if (subjectId) {
-            // ✅ Cast as any to fix the "slug does not exist on type Subject" error
-            const subject = (await req.payload.findByID({
-              collection: "subjects",
-              id: subjectId,
-            })) as any;
+          /* ----- Subject → Lessons ISR ----- */
+          if (subjectId && shouldRevalidate) {
+            const subject = (await req.payload.findByID(
+              {
+                collection: "subjects",
+                id: subjectId,
+              }
+            )) as any;
 
-            await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                type: "lessons",
-                subject: subject?.slug || subject?.name || 'unknown',
-                secret: process.env.REVALIDATE_TOKEN,
-              }),
-            });
+            await fetch(
+              `${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
+                body: JSON.stringify({
+                  type: "lessons",
+                  subject:
+                    subject?.slug ||
+                    subject?.name ||
+                    "unknown",
+                  secret:
+                    process.env.REVALIDATE_TOKEN,
+                }),
+              }
+            );
           }
         } catch (err) {
-          console.error("❌ Resource ISR revalidation failed:", err);
+          console.error(
+            "❌ Resource ISR failed:",
+            err
+          );
         }
       },
     ],
 
+    /* ---------- AFTER DELETE ---------- */
     afterDelete: [
       async () => {
         try {
-          await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              type: "resources",
-              secret: process.env.REVALIDATE_TOKEN,
-            }),
-          });
+          await fetch(
+            `${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              body: JSON.stringify({
+                type: "resources",
+                secret:
+                  process.env.REVALIDATE_TOKEN,
+              }),
+            }
+          );
         } catch (err) {
-          console.error("❌ Resource delete ISR failed:", err);
+          console.error(
+            "❌ Delete ISR failed:",
+            err
+          );
         }
       },
     ],

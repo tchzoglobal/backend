@@ -1,35 +1,106 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig } from "payload";
 
 export const Media: CollectionConfig = {
-  slug: 'media',
+  slug: "media",
+
   admin: {
-    useAsTitle: 'alt',
-    // Helps with debugging to see the actual URL in the list
-    defaultColumns: ['filename', 'alt', 'url'],
+    useAsTitle: "alt",
+
+    // Helpful in admin list view
+    defaultColumns: ["filename", "alt", "url"],
   },
+
   access: {
     read: () => true,
   },
+
   upload: {
     disableLocalStorage: true,
-    mimeTypes: ['image/*'],
-    // This function forces the Admin UI to use the Cloudinary URL for previews
+    mimeTypes: ["image/*"],
+
+    /* -------------------------------------------------
+       Cloudinary Folder Routing (IMPORTANT)
+       Uses `prefix` saved on doc OR falls back
+    -------------------------------------------------- */
+    // NOTE:
+    // Your Cloudinary adapter must store folder in `prefix`
+    // If not, set it in adapter config instead.
+
+    /* -------------------------------------------------
+       Admin Thumbnail Preview
+    -------------------------------------------------- */
     adminThumbnail: ({ doc }) => {
-      // If the URL is already in the database (new uploads), use it
-      if (doc.url) return doc.url as string;
-      
-      // FALLBACK for your existing MongoDB records:
-      // Construct the Cloudinary URL manually using your cloud name and the filename in DB
-      const cloudName = 'dv5xdsw9a'; 
-      const folder = doc.prefix || 'subjects';
+      // ✅ New uploads (URL already saved)
+      if (doc?.url) return doc.url as string;
+
+      // ⚠️ Fallback for legacy DB records
+      const cloudName = "dv5xdsw9a";
+
+      // Folder priority:
+      // 1. Stored prefix
+      // 2. Resource infographs → lessons
+      // 3. Default → subjects
+      const folder =
+        doc?.prefix ||
+        doc?.folder ||
+        "subjects";
+
       return `https://res.cloudinary.com/${cloudName}/image/upload/${folder}/${doc.filename}`;
     },
   },
+
   fields: [
     {
-      name: 'alt',
-      type: 'text',
+      name: "alt",
+      type: "text",
       required: true,
     },
+
+    /* -------------------------------------------------
+       Folder / Prefix Tracker (for routing + fallback)
+    -------------------------------------------------- */
+    {
+      name: "prefix",
+      type: "text",
+      admin: {
+        readOnly: true,
+        description:
+          "Cloudinary folder prefix (auto-assigned)",
+      },
+    },
   ],
-}
+
+  /* -------------------------------------------------
+     Auto-assign Cloudinary folder by collection usage
+  -------------------------------------------------- */
+  hooks: {
+    beforeChange: [
+      async ({ data, req }) => {
+        try {
+          // Detect which collection is uploading
+          const referrer =
+            req.headers.get("referer") || "";
+
+          if (referrer.includes("subjects")) {
+            data.prefix = "subjects";
+          } else if (referrer.includes("lessons")) {
+            data.prefix = "lessons";
+          } else if (referrer.includes("resources")) {
+            // ✅ Your requirement:
+            // Infographs → lessons folder
+            data.prefix = "lessons";
+          } else {
+            data.prefix = "misc";
+          }
+        } catch (err) {
+          console.error(
+            "❌ Media prefix assignment failed:",
+            err
+          );
+        }
+
+        return data;
+      },
+    ],
+  },
+};
