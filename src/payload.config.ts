@@ -68,10 +68,25 @@ export default buildConfig({
         collections: {
           media: {
             adapter: cloudinaryAdapter(),
-            prefix: 'subjects',
+
+            /* SAFE DYNAMIC PREFIX */
+            prefix: (args) => {
+              if (!args) return 'misc';
+
+              const doc = args.doc;
+
+              if (!doc) return 'misc';
+
+              if (typeof doc.prefix === 'string') {
+                return doc.prefix;
+              }
+
+              return 'misc';
+            },
           },
         },
       })
     : (config) => config,
 ],
+
 })
