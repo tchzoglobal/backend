@@ -62,25 +62,13 @@ export default buildConfig({
 
   sharp,
 
-plugins: [
+  plugins: [
   isCloudinaryConfigured
     ? cloudStoragePlugin({
         collections: {
           media: {
             adapter: cloudinaryAdapter(),
-
-            /* ----------------------------------
-               Dynamic Folder Routing
-            ---------------------------------- */
-            prefix: ({ doc }) => {
-              // Use prefix set in Media hooks
-              if (doc?.prefix) {
-                return doc.prefix;
-              }
-
-              // Fallback safety
-              return "misc";
-            },
+            prefix: 'subjects',
           },
         },
       })
