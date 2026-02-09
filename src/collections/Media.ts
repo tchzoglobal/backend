@@ -23,8 +23,7 @@ export const Media: CollectionConfig = {
       if (doc?.url) return doc.url as string;
 
       const cloudName = "dv5xdsw9a";
-      const folder =
-        doc?.prefix || "subjects";
+      const folder = doc?.prefix || "misc";
 
       return `https://res.cloudinary.com/${cloudName}/image/upload/${folder}/${doc.filename}`;
     },
@@ -55,27 +54,23 @@ export const Media: CollectionConfig = {
         if (operation !== "create") return data;
 
         try {
-          /**
-           * Payload passes collection context
-           * via query params in admin uploads
-           */
-          const resource =
-            req?.query?.collection ||
-            req?.body?.collection ||
-            "";
+          /* ---------------------------------------
+             Detect upload origin
+          ---------------------------------------- */
+          const referer = req?.headers?.referer || "";
 
-          /* ---- Routing ---- */
+          /* ---- Routing Rules ---- */
 
-          if (resource === "subjects") {
+          if (referer.includes("/subjects")) {
             data.prefix = "subjects";
           }
 
-          else if (resource === "lessons") {
+          else if (referer.includes("/lessons")) {
             data.prefix = "lessons";
           }
 
-          else if (resource === "resources") {
-            // ✅ Infographs go to lessons folder
+          else if (referer.includes("/resources")) {
+            // Infographs live with lessons
             data.prefix = "lessons";
           }
 
@@ -88,6 +83,8 @@ export const Media: CollectionConfig = {
             "❌ Media prefix assignment failed:",
             err
           );
+
+          data.prefix = "misc";
         }
 
         return data;

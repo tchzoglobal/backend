@@ -234,10 +234,12 @@ const Resources: CollectionConfig = {
       name: "infograph",
       type: "upload",
       relationTo: "media",
-      label: "Infograph (Cloudinary Image)",
+      label: "Infograph",
+      required: false,
       admin: {
         position: "sidebar",
       },
+      filterOptions: { mimeType: { contains: "image" }, },
     },
 
     /* ---------------- GENERATED ---------------- */
