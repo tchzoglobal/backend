@@ -111,7 +111,6 @@ export const Media: CollectionConfig = {
         if (doc.filename) {
           doc.url = `https://res.cloudinary.com/${cloudName}/image/upload/${folder}/${doc.filename}`;
         }
-
         return doc;
       },
     ],

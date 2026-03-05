@@ -1,16 +1,7 @@
 import type { CollectionConfig, Where } from "payload";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 
-/* -----------------------------------------------------------
-   Extract plain text from Lexical nodes
------------------------------------------------------------- */
-const extractText = (node: any): string => {
-  if (!node) return "";
-  if (typeof node.text === "string") return node.text;
-  if (Array.isArray(node.children))
-    return node.children.map(extractText).join(" ");
-  return "";
-};
+
 
 /* -----------------------------------------------------------
    Convert Lexical → Hierarchical Mindmap JSON
@@ -122,6 +113,7 @@ const Resources: CollectionConfig = {
       type: "text",
       required: true,
     },
+    
 
     {
       name: "board",

@@ -38,11 +38,16 @@ export default buildConfig({
     'http://localhost:3000',
 
   cors: [
-    'http://localhost:3001',
-    'http://192.168.0.107:3001',
-    'http://localhost:19006',
-    process.env.NEXT_PUBLIC_SITE_URL || '',
-  ].filter(Boolean),
+  'http://localhost:3001',
+  'http://192.168.0.107:3001',
+  process.env.NEXT_PUBLIC_SITE_URL || '',
+  'https://backend-965917092567.asia-south1.run.app', // Add your actual Vercel domain
+].filter(Boolean),
+
+csrf: [
+  process.env.NEXT_PUBLIC_SITE_URL || '',
+  'https://backend-965917092567.asia-south1.run.app',
+].filter(Boolean),
 
   collections: [
     Users,
