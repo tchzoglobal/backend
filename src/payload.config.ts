@@ -40,11 +40,15 @@ export default buildConfig({
   cors: [
   'http://localhost:3001',
   'http://192.168.0.107:3001',
+  'https://www.edzyte.com',
+  'https://edzyte.com',
   process.env.NEXT_PUBLIC_SITE_URL || '',
   'https://backend-965917092567.asia-south1.run.app', // Add your actual Vercel domain
 ].filter(Boolean),
 
 csrf: [
+  'https://www.edzyte.com',
+  'https://edzyte.com',
   process.env.NEXT_PUBLIC_SITE_URL || '',
   'https://backend-965917092567.asia-south1.run.app',
 ].filter(Boolean),
