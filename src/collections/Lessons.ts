@@ -44,6 +44,22 @@ const Lessons: CollectionConfig = {
       required: true,
     },
     {
+      name: 'slug',
+      type: 'text',
+      admin: {
+        position: 'sidebar',
+      },
+      hooks: {
+        beforeValidate: [
+          ({ data }) => {
+            if (data?.title) {
+              return data.title.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+            }
+          },
+        ],
+      },
+    },
+    {
       name: 'subject',
       type: 'relationship',
       relationTo: 'subjects',

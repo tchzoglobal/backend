@@ -23,6 +23,7 @@
     "@payloadcms/next": "3.64.0",
     "@payloadcms/payload-cloud": "^3.64.0",
     "@payloadcms/plugin-cloud-storage": "^3.64.0",
+    "@payloadcms/plugin-seo": "^3.79.0",
     "@payloadcms/richtext-lexical": "3.64.0",
     "@payloadcms/ui": "3.64.0",
     "axios": "^1.13.2",

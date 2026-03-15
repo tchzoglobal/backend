@@ -6,7 +6,7 @@ import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 import sharp from 'sharp'
-
+import { seo } from '@payloadcms/plugin-seo'
 import { Users } from './collections/Users'
 import { Media } from './collections/Media'
 import Mediums from './collections/Mediums'
@@ -79,12 +79,30 @@ csrf: [
           collections: {
             media: {
               adapter: cloudinaryAdapter(),
-
-              // Static fallback only
               prefix: 'subjects',
             },
           },
         })
       : (config) => config,
+    
+    // [2] Add the SEO plugin here
+    seo({
+      collections: ['boards', 'grades', 'mediums', 'subjects', 'lessons', 'resources'],
+      uploadsCollection: 'media',
+      generateTitle: ({ doc }: any) => {
+        return doc?.title || doc?.name ? `${doc.title || doc.name} | Edzyte` : 'Edzyte'
+      },
+      generateDescription: ({ doc }: any) => {
+        return doc?.description || 'Explore high-quality educational resources on Edzyte.'
+      },
+      generateImage: ({ doc }: any) => {
+        // Automatically picks 'image' from Subjects or 'infograph' from Resources
+        return doc?.image || doc?.infograph || doc?.meta?.image || null
+      },
+      generateURL: ({ doc, collection }: any) => {
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://edzyte.com'
+        return `${siteUrl}/${collection.slug}/${doc?.slug || doc?.id}`
+      },
+    }),
   ],
 })
