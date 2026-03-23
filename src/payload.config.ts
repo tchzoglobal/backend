@@ -6,7 +6,7 @@ import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 import sharp from 'sharp'
-import { seo } from '@payloadcms/plugin-seo'
+import { seoPlugin } from '@payloadcms/plugin-seo'
 import { Users } from './collections/Users'
 import { Media } from './collections/Media'
 import Mediums from './collections/Mediums'
@@ -86,7 +86,7 @@ csrf: [
       : (config) => config,
     
     // [2] Add the SEO plugin here
-    seo({
+    seoPlugin({
       collections: ['boards', 'grades', 'mediums', 'subjects', 'lessons', 'resources'],
       uploadsCollection: 'media',
       generateTitle: ({ doc }: any) => {
@@ -95,12 +95,15 @@ csrf: [
       generateDescription: ({ doc }: any) => {
         return doc?.description || 'Explore high-quality educational resources on Edzyte.'
       },
-      generateImage: ({ doc }: any) => {
-        // Automatically picks 'image' from Subjects or 'infograph' from Resources
-        return doc?.image || doc?.infograph || doc?.meta?.image || null
-      },
       generateURL: ({ doc, collection }: any) => {
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://edzyte.com'
+        
+        // CUSTOM LOGIC: If it's a resource, link to the Lesson page instead of the PDF
+        if (collection.slug === 'resources' && doc.lesson) {
+            const lessonId = typeof doc.lesson === 'object' ? doc.lesson.id : doc.lesson;
+            return `${siteUrl}/lessons/${lessonId}`;
+        }
+        
         return `${siteUrl}/${collection.slug}/${doc?.slug || doc?.id}`
       },
     }),
