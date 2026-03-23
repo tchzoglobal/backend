@@ -181,19 +181,10 @@ const Resources: CollectionConfig = {
           type: "text",
           label: "GitHub PDF Path",
           admin: {
-            placeholder: "/physics/lesson-1.pdf",
-            description: "Relative path from the root of the grade repository.",
+            placeholder: "Git hub url",
+            description: "Full URL path from the repository.",
           },
-        },
-        {
-          name: "fullPdfUrl",
-          type: "text",
-          label: "Generated Full PDF URL",
-          admin: {
-            readOnly: true,
-            description: "Auto-generated URL from GitHub Pages.",
-          },
-        },
+        }
       ],
     },
 
