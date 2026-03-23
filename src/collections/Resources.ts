@@ -1,8 +1,6 @@
 import type { CollectionConfig, Where } from "payload";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 
-
-
 /* -----------------------------------------------------------
    Convert Lexical → Hierarchical Mindmap JSON
 ------------------------------------------------------------ */
@@ -175,6 +173,29 @@ const Resources: CollectionConfig = {
         return { id: { exists: false } };
       },
     },
+    {
+      type: 'row', // Groups these visually in the admin UI
+      fields: [
+        {
+          name: "pdfPath",
+          type: "text",
+          label: "GitHub PDF Path",
+          admin: {
+            placeholder: "/physics/lesson-1.pdf",
+            description: "Relative path from the root of the grade repository.",
+          },
+        },
+        {
+          name: "fullPdfUrl",
+          type: "text",
+          label: "Generated Full PDF URL",
+          admin: {
+            readOnly: true,
+            description: "Auto-generated URL from GitHub Pages.",
+          },
+        },
+      ],
+    },
 
     /* ---------------- MEDIA LINKS ---------------- */
     {
@@ -270,6 +291,26 @@ const Resources: CollectionConfig = {
             );
           }
         }
+
+        if (data.pdfPath && data.grade) {
+        try {
+          // Use req.payload to access the local API
+          const gradeDoc = await req.payload.findByID({
+            collection: 'grades',
+            id: data.grade,
+          });
+
+          if (gradeDoc) {
+            // Logic to format the repo name based on the grade title/slug
+            const repoName = `${gradeDoc.slug || gradeDoc.name.toLowerCase().replace(/\s+/g, '-')}-lessons`;
+            const githubUsername = "your-github-username"; 
+            
+            data.fullPdfUrl = `https://${githubUsername}.github.io/${repoName}${data.pdfPath}`;
+          }
+        } catch (err) {
+          console.error("❌ PDF URL Generation failed:", err);
+        }
+      }
 
         return data;
       },
