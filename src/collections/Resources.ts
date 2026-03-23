@@ -292,25 +292,7 @@ const Resources: CollectionConfig = {
           }
         }
 
-        if (data.pdfPath && data.grade) {
-        try {
-          // Use req.payload to access the local API
-          const gradeDoc = await req.payload.findByID({
-            collection: 'grades',
-            id: data.grade,
-          });
-
-          if (gradeDoc) {
-            // Logic to format the repo name based on the grade title/slug
-            const repoName = `${gradeDoc.slug || gradeDoc.name.toLowerCase().replace(/\s+/g, '-')}-lessons`;
-            const githubUsername = "your-github-username"; 
-            
-            data.fullPdfUrl = `https://${githubUsername}.github.io/${repoName}${data.pdfPath}`;
-          }
-        } catch (err) {
-          console.error("❌ PDF URL Generation failed:", err);
-        }
-      }
+        
 
         return data;
       },
