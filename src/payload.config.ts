@@ -89,22 +89,36 @@ csrf: [
     seoPlugin({
       collections: ['boards', 'grades', 'mediums', 'subjects', 'lessons', 'resources'],
       uploadsCollection: 'media',
+      // 🔹 ADD THIS: Make the meta field accessible to everyone
+      fields: ({ defaultFields }) => {
+        return defaultFields.map((field) => {
+          if ('name' in field && field.name === 'meta') {
+            return {
+              ...field,
+              access: {
+                read: () => true, // Allow your Next.js frontend to see the meta
+              },
+            }
+          }
+          return field
+        })
+      },
       generateTitle: ({ doc }: any) => {
-        return doc?.title || doc?.name ? `${doc.title || doc.name} | Edzyte` : 'Edzyte'
+        const title = doc?.title || doc?.name || 'Education Simplified';
+        return `${title} | Edzyte`;
       },
       generateDescription: ({ doc }: any) => {
-        return doc?.description || 'Explore high-quality educational resources on Edzyte.'
+        return doc?.description || 'Explore high-quality educational resources on Edzyte.';
       },
       generateURL: ({ doc, collection }: any) => {
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://edzyte.com'
         
-        // CUSTOM LOGIC: If it's a resource, link to the Lesson page instead of the PDF
         if (collection.slug === 'resources' && doc.lesson) {
             const lessonId = typeof doc.lesson === 'object' ? doc.lesson.id : doc.lesson;
-            return `${siteUrl}/lessons/${lessonId}`;
+            return `${siteUrl}/resources/${lessonId}`; // Fixed to match your Next.js route
         }
         
-        return `${siteUrl}/${collection.slug}/${doc?.slug || doc?.id}`
+        return `${siteUrl}/${collection.slug}/${doc?.id}`
       },
     }),
   ],
