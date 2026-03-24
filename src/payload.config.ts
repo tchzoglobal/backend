@@ -87,39 +87,18 @@ csrf: [
     
     // [2] Add the SEO plugin here
     seoPlugin({
-      collections: ['boards', 'grades', 'mediums', 'subjects', 'lessons', 'resources'],
-      uploadsCollection: 'media',
-      // 🔹 ADD THIS: Make the meta field accessible to everyone
-      fields: ({ defaultFields }) => {
-        return defaultFields.map((field) => {
-          if ('name' in field && field.name === 'meta') {
-            return {
-              ...field,
-              access: {
-                read: () => true, // Allow your Next.js frontend to see the meta
-              },
-            }
-          }
-          return field
-        })
-      },
-      generateTitle: ({ doc }: any) => {
-        const title = doc?.title || doc?.name || 'Education Simplified';
-        return `${title} | Edzyte`;
-      },
-      generateDescription: ({ doc }: any) => {
-        return doc?.description || 'Explore high-quality educational resources on Edzyte.';
-      },
-      generateURL: ({ doc, collection }: any) => {
-        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://edzyte.com'
-        
-        if (collection.slug === 'resources' && doc.lesson) {
-            const lessonId = typeof doc.lesson === 'object' ? doc.lesson.id : doc.lesson;
-            return `${siteUrl}/resources/${lessonId}`; // Fixed to match your Next.js route
-        }
-        
-        return `${siteUrl}/${collection.slug}/${doc?.id}`
-      },
-    }),
+  collections: ['boards', 'grades', 'mediums', 'subjects', 'lessons', 'resources'],
+  uploadsCollection: 'media',
+  generateTitle: ({ doc, collection }: any) => {
+    // Log this to your terminal to see what 'doc' actually contains during the save
+    console.log(`Generating title for ${collection.slug}:`, doc?.name || doc?.title);
+    
+    const contentTitle = doc?.title || doc?.name || 'Education Resource';
+    return `${contentTitle} | Edzyte`;
+  },
+  generateDescription: ({ doc }: any) => {
+    return doc?.description || 'Simplified learning resources for CBSE, ICSE, and State Boards.';
+  },
+}),
   ],
 })
