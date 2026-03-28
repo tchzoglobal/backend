@@ -1,16 +1,19 @@
 import type { CollectionConfig  } from 'payload'
 
-const generateSlug = ({ data }: any) => {
-  if (!data) return data
+const generateSlug = ({ value, data }: any) => {
+  // If slug already manually entered → keep it
+  if (value) return value
 
-  if (!data.slug && data.name) {
-    data.slug = data.name
+  // Auto-generate from name
+  if (data?.name) {
+    return data.name
       .toLowerCase()
+      .trim()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '')
   }
 
-  return data
+  return value
 }
 
 const Subjects: CollectionConfig = {

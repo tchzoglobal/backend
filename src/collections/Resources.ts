@@ -16,6 +16,23 @@ const generateSlug = ({ data }: any) => {
 };
 
 /* -----------------------------------------------------------
+   Extract Plain Text from Lexical (for TTS + SEO)
+------------------------------------------------------------ */
+const extractPlainText = (node: any): string => {
+  if (!node) return "";
+
+  if (node.type === "text") {
+    return node.text || "";
+  }
+
+  if (Array.isArray(node.children)) {
+    return node.children.map(extractPlainText).join(" ");
+  }
+
+  return "";
+};
+
+/* -----------------------------------------------------------
    Convert Lexical → Hierarchical Mindmap JSON
 ------------------------------------------------------------ */
 const convertNodesToMindmap = (rootChildren: any[]) => {
@@ -67,9 +84,7 @@ const convertNodesToMindmap = (rootChildren: any[]) => {
     if (stack.length === 0) {
       result.push(newNode);
     } else {
-      stack[stack.length - 1].item.children.push(
-        newNode
-      );
+      stack[stack.length - 1].item.children.push(newNode);
     }
 
     stack.push({ level, item: newNode });
@@ -78,8 +93,7 @@ const convertNodesToMindmap = (rootChildren: any[]) => {
   const walk = (nodes: any[]) => {
     for (const node of nodes) {
       if (!node) continue;
-      if (node.type === "listitem")
-        processListItem(node);
+      if (node.type === "listitem") processListItem(node);
       if (node.children) walk(node.children);
     }
   };
@@ -94,35 +108,20 @@ const convertNodesToMindmap = (rootChildren: any[]) => {
 const Resources: CollectionConfig = {
   slug: "resources",
 
-  indexes: [
-    { fields: ["lesson"] },
-    { fields: ["subject"] },
-    { fields: ["board", "grade", "medium"] },
-    { fields: ["subject", "lesson"] },
-    { fields: ["lesson", "board", "grade", "medium"] },
-    { fields: ["createdAt"] },
-  ],
-
   access: {
     read: () => true,
   },
 
   admin: {
     useAsTitle: "title",
-    defaultColumns: [
-      "title",
-      "slug",
-      "subject",
-      "board",
-      "grade",
-      "medium",
-    ],
   },
+
   hooks: {
     beforeValidate: [generateSlug],
 
     beforeChange: [
       async ({ data }) => {
+        /* -------- Mindmap -------- */
         const root =
           data?.mindmap?.root || data?.mindmap?.[0]?.root || null;
 
@@ -132,6 +131,20 @@ const Resources: CollectionConfig = {
           } catch (err) {
             console.error("❌ Mindmap conversion error:", err);
           }
+        }
+
+        /* -------- FAQ TEXT (TTS + SEO) -------- */
+        if (Array.isArray(data?.faqs)) {
+          data.faqText = data.faqs
+            .map((f: any) => {
+              const q =
+                extractPlainText(f.question?.root) || "";
+              const a =
+                extractPlainText(f.answer?.root) || "";
+
+              return `Question: ${q}. Answer: ${a}.`;
+            })
+            .join(" ");
         }
 
         return data;
@@ -163,81 +176,6 @@ const Resources: CollectionConfig = {
         }
 
         return doc;
-      },
-    ],
-
-    afterChange: [
-      async ({ doc, previousDoc, req }) => {
-        try {
-          const lessonId =
-            typeof doc.lesson === "object"
-              ? doc.lesson?.id
-              : doc.lesson;
-
-          const subjectId =
-            typeof doc.subject === "object"
-              ? doc.subject?.id
-              : doc.subject;
-
-          const infographChanged =
-            JSON.stringify(previousDoc?.infograph) !==
-            JSON.stringify(doc?.infograph);
-
-          const dataTableChanged =
-            JSON.stringify(previousDoc?.dataTable) !==
-            JSON.stringify(doc?.dataTable);
-
-          const shouldRevalidate =
-            infographChanged || dataTableChanged;
-
-          if (lessonId && shouldRevalidate) {
-            await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                type: "resources",
-                lessonID: lessonId,
-                secret: process.env.REVALIDATE_TOKEN,
-              }),
-            });
-          }
-
-          if (subjectId && shouldRevalidate) {
-            const subject = (await req.payload.findByID({
-              collection: "subjects",
-              id: subjectId,
-            })) as any;
-
-            await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                type: "lessons",
-                subject: subject?.slug || "unknown",
-                secret: process.env.REVALIDATE_TOKEN,
-              }),
-            });
-          }
-        } catch (err) {
-          console.error("❌ Resource ISR failed:", err);
-        }
-      },
-    ],
-
-    afterDelete: [
-      async () => {
-        try {
-          await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              type: "resources",
-              secret: process.env.REVALIDATE_TOKEN,
-            }),
-          });
-        } catch (err) {
-          console.error("❌ Delete ISR failed:", err);
-        }
       },
     ],
   },
@@ -288,7 +226,7 @@ const Resources: CollectionConfig = {
       },
     },
 
-    /* -------- MAIN SEO CONTENT -------- */
+    /* -------- MAIN CONTENT -------- */
     {
       name: "content",
       type: "richText",
@@ -300,15 +238,31 @@ const Resources: CollectionConfig = {
       type: "textarea",
     },
 
+    /* -------- FAQ (UPDATED) -------- */
     {
       name: "faqs",
       type: "array",
       fields: [
-        { name: "question", type: "text" },
-        { name: "answer", type: "textarea" },
+        {
+          name: "question",
+          type: "richText",
+          editor: lexicalEditor(),
+        },
+        {
+          name: "answer",
+          type: "richText",
+          editor: lexicalEditor(),
+        },
       ],
     },
 
+    {
+      name: "faqText",
+      type: "textarea",
+      admin: { readOnly: true },
+    },
+
+    /* -------- SEO -------- */
     {
       name: "seo",
       type: "group",
@@ -319,11 +273,8 @@ const Resources: CollectionConfig = {
       ],
     },
 
-    /* -------- EXISTING FEATURES -------- */
-    {
-      name: "pdfPath",
-      type: "text",
-    },
+    /* -------- FEATURES -------- */
+    { name: "pdfPath", type: "text" },
     { name: "video", type: "text" },
     { name: "audio", type: "text" },
 
