@@ -15,15 +15,32 @@ const generateSlug = ({ data }: any) => {
   return data;
 };
 
+/* ---------------- COMMON VALIDATORS ---------------- */
+const requiredText = (label: string) => {
+  return (val: string | string[] | null | undefined) => {
+    if (typeof val !== "string" || val.trim().length === 0) {
+      return `${label} is required`;
+    }
+    return true;
+  };
+};
+
+const minLengthText = (label: string, min: number) => {
+  return (val: string | string[] | null | undefined) => {
+    if (typeof val !== "string" || val.trim().length < min) {
+      return `${label} must be at least ${min} characters`;
+    }
+    return true;
+  };
+};
+
 /* -----------------------------------------------------------
-   Extract Plain Text from Lexical (for TTS + SEO)
+   Extract Plain Text
 ------------------------------------------------------------ */
 const extractPlainText = (node: any): string => {
   if (!node) return "";
 
-  if (node.type === "text") {
-    return node.text || "";
-  }
+  if (node.type === "text") return node.text || "";
 
   if (Array.isArray(node.children)) {
     return node.children.map(extractPlainText).join(" ");
@@ -33,7 +50,7 @@ const extractPlainText = (node: any): string => {
 };
 
 /* -----------------------------------------------------------
-   Convert Lexical → Hierarchical Mindmap JSON
+   Mindmap Conversion
 ------------------------------------------------------------ */
 const convertNodesToMindmap = (rootChildren: any[]) => {
   if (!Array.isArray(rootChildren)) return [];
@@ -41,51 +58,30 @@ const convertNodesToMindmap = (rootChildren: any[]) => {
   const result: any[] = [];
   const stack: any[] = [];
 
-  const extractListItemText = (children: any[]) => {
+  const extractListItemText = (children: any[]): string => {
     let text = "";
     for (const child of children) {
       if (child.type === "text") text += child.text + " ";
       if (child.type === "paragraph" && child.children) {
         text += extractListItemText(child.children);
       }
-      if (child.type === "list") continue;
     }
     return text.trim();
   };
 
   const processListItem = (node: any) => {
-    if (node.type !== "listitem") return;
-
     const level = (node.indent || 0) + 1;
     const text = extractListItemText(node.children);
     if (!text) return;
 
     const newNode = { text, children: [] };
 
-    if (stack.length === 0) {
-      result.push(newNode);
-      stack.push({ level, item: newNode });
-      return;
-    }
-
-    if (level > stack[stack.length - 1].level) {
-      stack[stack.length - 1].item.children.push(newNode);
-      stack.push({ level, item: newNode });
-      return;
-    }
-
-    while (
-      stack.length &&
-      stack[stack.length - 1].level >= level
-    ) {
+    while (stack.length && stack[stack.length - 1].level >= level) {
       stack.pop();
     }
 
-    if (stack.length === 0) {
-      result.push(newNode);
-    } else {
-      stack[stack.length - 1].item.children.push(newNode);
-    }
+    if (stack.length === 0) result.push(newNode);
+    else stack[stack.length - 1].item.children.push(newNode);
 
     stack.push({ level, item: newNode });
   };
@@ -126,25 +122,35 @@ const Resources: CollectionConfig = {
           data?.mindmap?.root || data?.mindmap?.[0]?.root || null;
 
         if (root?.children) {
-          try {
-            data.mindmapJSON = convertNodesToMindmap(root.children);
-          } catch (err) {
-            console.error("❌ Mindmap conversion error:", err);
-          }
+          data.mindmapJSON = convertNodesToMindmap(root.children);
         }
 
-        /* -------- FAQ TEXT (TTS + SEO) -------- */
+        /* -------- FAQ TEXT -------- */
         if (Array.isArray(data?.faqs)) {
           data.faqText = data.faqs
             .map((f: any) => {
-              const q =
-                extractPlainText(f.question?.root) || "";
-              const a =
-                extractPlainText(f.answer?.root) || "";
-
+              const q = extractPlainText(f.question?.root) || "";
+              const a = extractPlainText(f.answer?.root) || "";
               return `Question: ${q}. Answer: ${a}.`;
             })
             .join(" ");
+        }
+
+        /* -------- QUIZ NORMALIZATION -------- */
+        if (data?.quiz?.enableQuiz && Array.isArray(data?.quiz?.questions)) {
+          data.quiz.questions = data.quiz.questions.map((q: any) => {
+            if (!q.multipleCorrect) {
+              let found = false;
+              q.options = q.options.map((opt: any) => {
+                if (opt.isCorrect && !found) {
+                  found = true;
+                  return opt;
+                }
+                return { ...opt, isCorrect: false };
+              });
+            }
+            return q;
+          });
         }
 
         return data;
@@ -226,41 +232,21 @@ const Resources: CollectionConfig = {
       },
     },
 
-    /* -------- MAIN CONTENT -------- */
-    {
-      name: "content",
-      type: "richText",
-      editor: lexicalEditor(),
-    },
+    /* -------- CONTENT -------- */
+    { name: "content", type: "richText", editor: lexicalEditor() },
+    { name: "description", type: "textarea" },
 
-    {
-      name: "description",
-      type: "textarea",
-    },
-
-    /* -------- FAQ (UPDATED) -------- */
+    /* -------- FAQ -------- */
     {
       name: "faqs",
       type: "array",
       fields: [
-        {
-          name: "question",
-          type: "richText",
-          editor: lexicalEditor(),
-        },
-        {
-          name: "answer",
-          type: "richText",
-          editor: lexicalEditor(),
-        },
+        { name: "question", type: "richText", editor: lexicalEditor() },
+        { name: "answer", type: "richText", editor: lexicalEditor() },
       ],
     },
 
-    {
-      name: "faqText",
-      type: "textarea",
-      admin: { readOnly: true },
-    },
+    { name: "faqText", type: "textarea", admin: { readOnly: true } },
 
     /* -------- SEO -------- */
     {
@@ -278,16 +264,8 @@ const Resources: CollectionConfig = {
     { name: "video", type: "text" },
     { name: "audio", type: "text" },
 
-    {
-      name: "studyGuide",
-      type: "richText",
-      editor: lexicalEditor(),
-    },
-    {
-      name: "mindmap",
-      type: "richText",
-      editor: lexicalEditor(),
-    },
+    { name: "studyGuide", type: "richText", editor: lexicalEditor() },
+    { name: "mindmap", type: "richText", editor: lexicalEditor() },
 
     { name: "dataTable", type: "json" },
 
@@ -298,15 +276,89 @@ const Resources: CollectionConfig = {
       admin: { position: "sidebar" },
     },
 
-    {
-      name: "mindmapJSON",
-      type: "json",
-      admin: { readOnly: true },
-    },
+    { name: "mindmapJSON", type: "json", admin: { readOnly: true } },
 
+    { name: "order", type: "number" },
+
+    /* =========================================================
+       QUIZ SECTION
+    ========================================================= */
     {
-      name: "order",
-      type: "number",
+      name: "quiz",
+      type: "group",
+      label: "Quiz",
+      fields: [
+        {
+          name: "enableQuiz",
+          type: "checkbox",
+          defaultValue: false,
+        },
+        {
+          name: "questions",
+          type: "array",
+          admin: {
+            condition: (_, siblingData) => siblingData?.enableQuiz === true,
+          },
+          validate: (questions: any[]) => {
+            if (!questions || questions.length === 0) {
+              return "At least one question is required";
+            }
+            return true;
+          },
+          fields: [
+            {
+              name: "question",
+              type: "text",
+              required: true,
+              validate: minLengthText("Question", 5),
+            },
+            {
+              name: "multipleCorrect",
+              type: "checkbox",
+              defaultValue: false,
+            },
+            {
+              name: "options",
+              type: "array",
+              minRows: 2,
+              validate: (options: any[], { siblingData }: any) => {
+                if (!options || options.length < 2) {
+                  return "Minimum 2 options required";
+                }
+
+                const correct = options.filter(o => o?.isCorrect);
+
+                if (correct.length === 0) {
+                  return "At least one correct answer is required";
+                }
+
+                if (!siblingData?.multipleCorrect && correct.length > 1) {
+                  return "Only one correct answer allowed";
+                }
+
+                return true;
+              },
+              fields: [
+                {
+                  name: "text",
+                  type: "text",
+                  required: true,
+                  validate: requiredText("Option"),
+                },
+                {
+                  name: "isCorrect",
+                  type: "checkbox",
+                  defaultValue: false,
+                },
+              ],
+            },
+            {
+              name: "explanation",
+              type: "textarea",
+            },
+          ],
+        },
+      ],
     },
   ],
 };
