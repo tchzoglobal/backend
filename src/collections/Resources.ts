@@ -187,180 +187,236 @@ const Resources: CollectionConfig = {
   },
 
   fields: [
-    { name: "title", type: "text", required: true },
+  {
+    type: "tabs",
+    tabs: [
+      /* =========================================================
+         GENERAL TAB
+      ========================================================= */
+      {
+        label: "General",
+        fields: [
+          { name: "title", type: "text", required: true },
 
-    {
-      name: "slug",
-      type: "text",
-      index: true,
-      admin: { position: "sidebar" },
-    },
+          {
+            name: "slug",
+            type: "text",
+            index: true,
+          },
 
-    { name: "board", type: "relationship", relationTo: "boards", required: true },
-    { name: "medium", type: "relationship", relationTo: "mediums", required: true },
-    { name: "grade", type: "relationship", relationTo: "grades", required: true },
+          { name: "board", type: "relationship", relationTo: "boards", required: true },
+          { name: "medium", type: "relationship", relationTo: "mediums", required: true },
+          { name: "grade", type: "relationship", relationTo: "grades", required: true },
 
-    {
-      name: "subject",
-      type: "relationship",
-      relationTo: "subjects",
-      required: true,
-      filterOptions: ({ data }): Where => {
-        if (data?.board && data?.medium && data?.grade) {
-          return {
-            and: [
-              { board: { equals: data.board } },
-              { medium: { equals: data.medium } },
-              { grade: { equals: data.grade } },
+          {
+            name: "subject",
+            type: "relationship",
+            relationTo: "subjects",
+            required: true,
+            filterOptions: ({ data }): Where => {
+              if (data?.board && data?.medium && data?.grade) {
+                return {
+                  and: [
+                    { board: { equals: data.board } },
+                    { medium: { equals: data.medium } },
+                    { grade: { equals: data.grade } },
+                  ],
+                };
+              }
+              return { id: { exists: false } };
+            },
+          },
+
+          {
+            name: "lesson",
+            type: "relationship",
+            relationTo: "lessons",
+            required: true,
+            filterOptions: ({ data }): Where => {
+              if (data?.subject) {
+                return { subject: { equals: data.subject } };
+              }
+              return { id: { exists: false } };
+            },
+          },
+
+          { name: "order", type: "number" },
+
+          { name: "description", type: "textarea" },
+
+          {
+            name: "infograph",
+            type: "upload",
+            relationTo: "media",
+          },
+
+          /* SEO */
+          {
+            name: "seo",
+            type: "group",
+            fields: [
+              { name: "title", type: "text" },
+              { name: "description", type: "textarea" },
             ],
-          };
-        }
-        return { id: { exists: false } };
-      },
-    },
-
-    {
-      name: "lesson",
-      type: "relationship",
-      relationTo: "lessons",
-      required: true,
-      filterOptions: ({ data }): Where => {
-        if (data?.subject) {
-          return { subject: { equals: data.subject } };
-        }
-        return { id: { exists: false } };
-      },
-    },
-
-    /* -------- CONTENT -------- */
-    { name: "content", type: "richText", editor: lexicalEditor() },
-    { name: "description", type: "textarea" },
-
-    /* -------- FAQ -------- */
-    {
-      name: "faqs",
-      type: "array",
-      fields: [
-        { name: "question", type: "richText", editor: lexicalEditor() },
-        { name: "answer", type: "richText", editor: lexicalEditor() },
-      ],
-    },
-
-    { name: "faqText", type: "textarea", admin: { readOnly: true } },
-
-    /* -------- SEO -------- */
-    {
-      name: "seo",
-      type: "group",
-      admin: { position: "sidebar" },
-      fields: [
-        { name: "title", type: "text" },
-        { name: "description", type: "textarea" },
-      ],
-    },
-
-    /* -------- FEATURES -------- */
-    { name: "pdfPath", type: "text" },
-    { name: "video", type: "text" },
-    { name: "audio", type: "text" },
-
-    { name: "studyGuide", type: "richText", editor: lexicalEditor() },
-    { name: "mindmap", type: "richText", editor: lexicalEditor() },
-
-    { name: "dataTable", type: "json" },
-
-    {
-      name: "infograph",
-      type: "upload",
-      relationTo: "media",
-      admin: { position: "sidebar" },
-    },
-
-    { name: "mindmapJSON", type: "json", admin: { readOnly: true } },
-
-    { name: "order", type: "number" },
-
-    /* =========================================================
-       QUIZ SECTION
-    ========================================================= */
-    {
-      name: "quiz",
-      type: "group",
-      label: "Quiz",
-      fields: [
-        {
-          name: "enableQuiz",
-          type: "checkbox",
-          defaultValue: false,
-        },
-        {
-          name: "questions",
-          type: "array",
-          admin: {
-            condition: (_, siblingData) => siblingData?.enableQuiz === true,
           },
-          validate: (questions: any[]) => {
-            if (!questions || questions.length === 0) {
-              return "At least one question is required";
-            }
-            return true;
+        ],
+      },
+
+      /* =========================================================
+         CONTENT TAB
+      ========================================================= */
+      {
+        label: "Content",
+        fields: [
+          { name: "content", type: "richText", editor: lexicalEditor() },
+
+          { name: "pdfPath", type: "text" },
+          { name: "video", type: "text" },
+          { name: "audio", type: "text" },
+        ],
+      },
+
+      /* =========================================================
+         STUDY GUIDE TAB
+      ========================================================= */
+      {
+        label: "Study Guide",
+        fields: [
+          { name: "studyGuide", type: "richText", editor: lexicalEditor() },
+        ],
+      },
+
+      /* =========================================================
+         MINDMAP TAB
+      ========================================================= */
+      {
+        label: "Mindmap",
+        fields: [
+          { name: "mindmap", type: "richText", editor: lexicalEditor() },
+          { name: "mindmapJSON", type: "json", admin: { readOnly: true } },
+        ],
+      },
+
+      /* =========================================================
+         DATA TABLE TAB
+      ========================================================= */
+      {
+        label: "Data Table",
+        fields: [
+          { name: "dataTable", type: "json" },
+        ],
+      },
+
+      /* =========================================================
+         FAQ TAB
+      ========================================================= */
+      {
+        label: "FAQs",
+        fields: [
+          {
+            name: "faqs",
+            type: "array",
+            fields: [
+              { name: "question", type: "richText", editor: lexicalEditor() },
+              { name: "answer", type: "richText", editor: lexicalEditor() },
+            ],
           },
-          fields: [
-            {
-              name: "question",
-              type: "text",
-              required: true,
-              validate: minLengthText("Question", 5),
-            },
-            {
-              name: "multipleCorrect",
-              type: "checkbox",
-              defaultValue: false,
-            },
-            {
-              name: "options",
-              type: "array",
-              minRows: 2,
-              validate: (options: any[], { siblingData }: any) => {
-                if (!options || options.length < 2) {
-                  return "Minimum 2 options required";
-                }
+          {
+            name: "faqText",
+            type: "textarea",
+            admin: { readOnly: true },
+          },
+        ],
+      },
 
-                const correct = options.filter(o => o?.isCorrect);
-
-                if (correct.length === 0) {
-                  return "At least one correct answer is required";
-                }
-
-                if (!siblingData?.multipleCorrect && correct.length > 1) {
-                  return "Only one correct answer allowed";
-                }
-
-                return true;
+      /* =========================================================
+         QUIZ TAB
+      ========================================================= */
+      {
+        label: "Quiz",
+        fields: [
+          {
+            name: "quiz",
+            type: "group",
+            fields: [
+              {
+                name: "enableQuiz",
+                type: "checkbox",
+                defaultValue: false,
               },
-              fields: [
-                {
-                  name: "text",
-                  type: "text",
-                  required: true,
-                  validate: requiredText("Option"),
+              {
+                name: "questions",
+                type: "array",
+                admin: {
+                  condition: (_, siblingData) =>
+                    siblingData?.enableQuiz === true,
                 },
-                {
-                  name: "isCorrect",
-                  type: "checkbox",
-                  defaultValue: false,
+                validate: (questions: any[]) => {
+                  if (!questions || questions.length === 0) {
+                    return "At least one question is required";
+                  }
+                  return true;
                 },
-              ],
-            },
-            {
-              name: "explanation",
-              type: "textarea",
-            },
-          ],
-        },
-      ],
-    },
-  ],
+                fields: [
+                  {
+                    name: "question",
+                    type: "text",
+                    required: true,
+                    validate: minLengthText("Question", 5),
+                  },
+                  {
+                    name: "multipleCorrect",
+                    type: "checkbox",
+                    defaultValue: false,
+                  },
+                  {
+                    name: "options",
+                    type: "array",
+                    minRows: 2,
+                    validate: (options: any[], { siblingData }: any) => {
+                      if (!options || options.length < 2) {
+                        return "Minimum 2 options required";
+                      }
+
+                      const correct = options.filter(o => o?.isCorrect);
+
+                      if (correct.length === 0) {
+                        return "At least one correct answer is required";
+                      }
+
+                      if (!siblingData?.multipleCorrect && correct.length > 1) {
+                        return "Only one correct answer allowed";
+                      }
+
+                      return true;
+                    },
+                    fields: [
+                      {
+                        name: "text",
+                        type: "text",
+                        required: true,
+                        validate: requiredText("Option"),
+                      },
+                      {
+                        name: "isCorrect",
+                        type: "checkbox",
+                        defaultValue: false,
+                      },
+                    ],
+                  },
+                  {
+                    name: "explanation",
+                    type: "textarea",
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+],
 };
 
 export default Resources;
